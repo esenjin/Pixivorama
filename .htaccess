@@ -1,0 +1,5 @@
+# Protège config.php et settings.json contre tout accès direct
+<FilesMatch "^(config\.php|settings\.json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

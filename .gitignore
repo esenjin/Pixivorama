@@ -1,0 +1,2 @@
+# Réglages dynamiques (contient le PHPSESSID et le hash du mot de passe admin)
+settings.json

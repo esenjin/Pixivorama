@@ -1,0 +1,748 @@
+/* ============================================================
+   Pixivorama — CSS GALERIE
+   ============================================================ */
+
+/* ── Variables ── */
+:root {
+    --bg:        #0d0d0f;
+    --surface:   #141417;
+    --border:    #2a2a30;
+    --accent:    #c8a97e;
+    --accent-dim:#7a6248;
+    --text:      #e8e4dc;
+    --text-muted:#7a7870;
+    --card-bg:   #17171b;
+    --radius:    4px;
+    --gap:       20px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    letter-spacing: .04em;
+}
+
+/* ── Grain overlay ── */
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: .035;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* ── Header ── */
+header {
+    padding: 3rem 2rem 0;
+    text-align: center;
+    position: relative;
+}
+header::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    margin: 1.5rem auto 0;
+}
+.site-label {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .35em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: .75rem;
+}
+h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    line-height: 1.1;
+}
+
+/* ── Character selector ── */
+.selector-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 2.5rem 2rem 0;
+}
+.char-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .7rem;
+    font-weight: 400;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    padding: .55rem 1.1rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .25s, color .25s, background .25s;
+}
+.char-btn:hover {
+    border-color: var(--accent-dim);
+    color: var(--text);
+}
+.char-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200,169,126,.07);
+}
+
+/* ── Status bar ── */
+.status-bar {
+    text-align: center;
+    padding: 1.8rem 2rem .5rem;
+    font-size: .7rem;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    min-height: 3rem;
+}
+
+/* ── Grid ── */
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--gap);
+    padding: 1rem 2rem 4rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ── Card ── */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    opacity: 0;
+    transform: translateY(14px);
+    animation: fadeUp .45s forwards;
+    transition: border-color .3s, transform .3s;
+}
+.card:hover {
+    border-color: var(--accent-dim);
+    transform: translateY(-3px);
+}
+@keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.thumb-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* carré */
+    background: #1a1a1e;
+    overflow: hidden;
+}
+.thumb-wrap img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .5s ease, filter .4s;
+    filter: brightness(.92);
+}
+.card:hover .thumb-wrap img {
+    transform: scale(1.04);
+    filter: brightness(1);
+}
+
+/* Badge manga (plusieurs pages) */
+.badge-pages {
+    position: absolute;
+    top: 7px; right: 7px;
+    background: rgba(13,13,15,.82);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: .6rem;
+    letter-spacing: .08em;
+    padding: 2px 6px;
+    border-radius: 2px;
+}
+
+.card-info {
+    padding: .65rem .8rem .75rem;
+}
+.card-artist {
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Skeleton loader ── */
+.skeleton {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.skeleton-thumb {
+    width: 100%;
+    padding-top: 100%;
+    background: linear-gradient(90deg, #1a1a1e 25%, #22222a 50%, #1a1a1e 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+}
+.skeleton-line {
+    height: 10px;
+    margin: .65rem .8rem .75rem;
+    border-radius: 2px;
+    width: 55%;
+    background: linear-gradient(90deg, #1e1e23 25%, #26262e 50%, #1e1e23 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+    to { background-position: -200% 0; }
+}
+
+/* ── Pagination ── */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 5rem;
+    padding-inline: 1rem;
+}
+
+.page-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .7rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .2s, color .2s, background .2s;
+    line-height: 1;
+}
+.page-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.page-btn:disabled {
+    opacity: .25;
+    cursor: not-allowed;
+}
+
+/* Boutons numéros de page */
+.page-btn.page-num {
+    min-width: 2.4rem;
+    text-align: center;
+    padding: .55rem .5rem;
+}
+.page-btn.page-num.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200,169,126,.1);
+    cursor: default;
+}
+
+/* Boutons première / dernière page (« et ») */
+.page-btn.page-edge {
+    font-size: .8rem;
+    letter-spacing: 0;
+    padding: .55rem .75rem;
+}
+
+/* Ellipses */
+.page-ellipsis {
+    color: var(--text-muted);
+    font-size: .75rem;
+    padding: 0 .2rem;
+    user-select: none;
+    align-self: center;
+}
+
+/* ── Bouton retour en haut ── */
+.btn-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 2.6rem;
+    height: 2.6rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity .3s, transform .3s, border-color .2s, color .2s;
+    z-index: 100;
+}
+.btn-to-top.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+.btn-to-top:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ── Error ── */
+.error-msg {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    font-size: .75rem;
+    letter-spacing: .1em;
+}
+.error-msg strong {
+    display: block;
+    color: #c0776a;
+    font-size: .85rem;
+    margin-bottom: .5rem;
+    font-weight: 400;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .gallery { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 1rem; }
+    header { padding: 2rem 1rem 0; }
+    .page-btn.page-edge { display: none; } /* masque «/» sur mobile pour gagner de la place */
+}
+
+/* ============================================================
+   AJOUTS — Contrôles galerie & tooltip
+   ============================================================ */
+
+/* ── Barre de contrôles ── */
+.controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem 3rem;
+    padding: 1.8rem 2rem .2rem;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.control-label {
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Pills (boutons Tri / Par page) */
+.control-pills {
+    display: flex;
+    gap: 4px;
+}
+
+.pill {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    font-weight: 400;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: .4rem .85rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .2s, color .2s, background .2s;
+    line-height: 1;
+}
+.pill:hover:not(.active) {
+    border-color: var(--accent-dim);
+    color: var(--text);
+}
+.pill.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200,169,126,.08);
+    cursor: default;
+}
+
+/* ── Toggle switch 18+ ── */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+.toggle-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+}
+.toggle-track {
+    width: 2.4rem;
+    height: 1.25rem;
+    background: var(--border);
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    transition: background .25s, border-color .25s;
+}
+.toggle-thumb {
+    width: .85rem;
+    height: .85rem;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: transform .25s, background .25s;
+}
+.toggle-switch input:checked ~ .toggle-track {
+    background: rgba(200,169,126,.15);
+    border-color: var(--accent);
+}
+.toggle-switch input:checked ~ .toggle-track .toggle-thumb {
+    transform: translateX(1.15rem);
+    background: var(--accent);
+}
+
+/* ── Tooltip titre illustration ── */
+.img-tooltip {
+    position: fixed;
+    z-index: 1000;
+    background: rgba(13,13,15,.92);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    font-weight: 300;
+    letter-spacing: .08em;
+    padding: .4rem .75rem;
+    border-radius: var(--radius);
+    pointer-events: none;
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .15s, transform .15s;
+    backdrop-filter: blur(4px);
+}
+.img-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── Responsive contrôles ── */
+@media (max-width: 600px) {
+    .controls-bar {
+        gap: 1rem 1.5rem;
+        padding: 1.2rem 1rem .2rem;
+    }
+    .control-group {
+        gap: .5rem;
+    }
+}
+
+
+/* ============================================================
+   Pixivorama — CSS CONNEXION
+   ============================================================ */
+
+.login-wrap {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+.login-box {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+}
+.login-box h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 1.6rem;
+    color: var(--text);
+    text-align: center;
+}
+.login-box .site-label {
+    text-align: center;
+    margin-bottom: -.6rem;
+}
+.field { display: flex; flex-direction: column; gap: .5rem; }
+.field label {
+    font-size: .65rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .85rem;
+    padding: .65rem .9rem;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent-dim); }
+.btn-primary {
+    background: rgba(200,169,126,.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .7rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: .75rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s;
+    width: 100%;
+}
+.btn-primary:hover { background: rgba(200,169,126,.18); }
+.alert-error {
+    background: rgba(192,119,106,.1);
+    border: 1px solid #c0776a;
+    color: #c0776a;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    padding: .6rem .9rem;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+/* ============================================================
+   Pixivorama — CSS ADMIN
+   ============================================================ */
+
+/* ── Layout admin ── */
+.admin-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 2rem 6rem;
+}
+.admin-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--border);
+}
+.admin-header h1 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+}
+.admin-header a {
+    font-size: .65rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color .2s;
+}
+.admin-header a:hover { color: var(--text); }
+
+/* ── Sections ── */
+.admin-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.8rem 2rem;
+    margin-bottom: 1.5rem;
+}
+.section-title {
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.4rem;
+    padding-bottom: .8rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Champs ── */
+.field { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+.field:last-of-type { margin-bottom: 0; }
+.field label {
+    font-size: .65rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.field input[type="text"],
+.field input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .85rem;
+    padding: .65rem .9rem;
+    border-radius: var(--radius);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent-dim); }
+.field .hint {
+    font-size: .6rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+}
+
+/* ── Boutons ── */
+.btn-primary {
+    background: rgba(200,169,126,.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: .65rem 1.4rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s;
+    margin-top: 1.2rem;
+}
+.btn-primary:hover { background: rgba(200,169,126,.18); }
+.btn-danger {
+    background: transparent;
+    border: 1px solid #6a3030;
+    color: #c0776a;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: .4rem .8rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s, border-color .2s;
+    line-height: 1;
+}
+.btn-danger:hover { background: rgba(192,119,106,.1); border-color: #c0776a; }
+.btn-add {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    padding: .6rem 1.2rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .2s, color .2s;
+    width: 100%;
+    margin-top: .5rem;
+}
+.btn-add:hover { border-color: var(--accent-dim); color: var(--text); }
+
+/* ── Alertes ── */
+.alert {
+    padding: .75rem 1rem;
+    border-radius: var(--radius);
+    font-size: .72rem;
+    letter-spacing: .08em;
+    margin-bottom: 1.5rem;
+}
+.alert-success {
+    background: rgba(126,200,150,.08);
+    border: 1px solid #4a9060;
+    color: #7ec896;
+}
+.alert-error {
+    background: rgba(192,119,106,.08);
+    border: 1px solid #c0776a;
+    color: #c0776a;
+}
+
+/* ── Tableau personnages ── */
+.char-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: .6rem;
+    align-items: center;
+    margin-bottom: .6rem;
+}
+.char-row input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .82rem;
+    padding: .55rem .8rem;
+    border-radius: var(--radius);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+}
+.char-row input:focus { border-color: var(--accent-dim); }
+.char-row-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: .6rem;
+    margin-bottom: .4rem;
+}
+.char-row-header span {
+    font-size: .6rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-left: .1rem;
+}
+
+@media (max-width: 520px) {
+    .admin-wrap { padding: 1.5rem 1rem 5rem; }
+    .admin-section { padding: 1.2rem 1rem; }
+    .char-row { grid-template-columns: 1fr; }
+    .char-row-header { display: none; }
+}
