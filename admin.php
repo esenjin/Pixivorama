@@ -58,6 +58,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Mettre à jour le titre de la galerie ---
+    elseif ($action === 'update_title') {
+        $title = trim($_POST['gallery_title'] ?? '');
+        if ($title === '') {
+            $error = 'Le titre ne peut pas être vide.';
+        } else {
+            $SETTINGS['gallery_title'] = $title;
+            save_settings($SETTINGS);
+            $success = 'Titre mis à jour.';
+        }
+    }
+
     // --- Mettre à jour le PHPSESSID ---
     elseif ($action === 'update_sessid') {
         $sessid = trim($_POST['phpsessid'] ?? '');
@@ -184,6 +196,22 @@ function adminPage(array $settings, string $error, string $success): void {
                        value="<?= htmlspecialchars($settings['phpsessid']) ?>"
                        placeholder="Votre PHPSESSID Pixiv" required>
                 <span class="hint">Connectez-vous sur pixiv.net → F12 → Application → Cookies → pixiv.net → PHPSESSID</span>
+            </div>
+            <button type="submit" class="btn-primary">Mettre à jour</button>
+        </form>
+    </section>
+
+    <!-- ── Section : Titre de la galerie ── -->
+    <section class="admin-section">
+        <p class="section-title">Titre de la galerie</p>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_title">
+            <div class="field">
+                <label for="gallery_title">Titre affiché</label>
+                <input type="text" id="gallery_title" name="gallery_title"
+                    value="<?= htmlspecialchars($settings['gallery_title'] ?? 'Illustrations') ?>"
+                    placeholder="Illustrations" required>
+                <span class="hint">Affiché dans le header de la galerie et dans l'onglet du navigateur.</span>
             </div>
             <button type="submit" class="btn-primary">Mettre à jour</button>
         </form>

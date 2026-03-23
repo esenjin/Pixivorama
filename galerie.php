@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galerie Pixiv</title>
+    <title><?= htmlspecialchars(PIXIV_GALLERY_TITLE) ?> — Galerie Pixiv</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Josefin+Sans:wght@200;300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/styles.css">
@@ -14,7 +14,7 @@
 
 <header>
     <p class="site-label">Galerie</p>
-    <h1>Illustrations</h1>
+    <h1><?= htmlspecialchars(PIXIV_GALLERY_TITLE) ?></h1>
 </header>
 
 <!-- Sélecteur de personnages généré depuis config.php -->

@@ -18,6 +18,7 @@ function load_settings(): array {
     return [
         'phpsessid'  => '12345678_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdef', // Valeur fictive, à remplacer par l'utilisateur
         'admin_hash' => password_hash('admin', PASSWORD_DEFAULT),
+        'gallery_title' => 'Illustrations',
         'characters' => [
             ['label' => 'Hitagi Senjougahara', 'tag' => '戦場ヶ原ひたぎ'],
             ['label' => 'Exemple : Hatsune Miku', 'tag' => '初音ミク'],
@@ -40,3 +41,4 @@ define('PIXIV_DEFAULT_PER_PAGE', 28);
 define('PIXIV_DEFAULT_ORDER',    'popular_d');
 define('PIXIV_DEFAULT_MODE',     'safe');
 define('PIXIV_AI_TYPE',          1);
+define('PIXIV_GALLERY_TITLE', $SETTINGS['gallery_title'] ?? 'Illustrations');
