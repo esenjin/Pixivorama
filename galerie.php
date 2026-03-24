@@ -15,6 +15,12 @@
 <header>
     <p class="site-label">Galerie</p>
     <h1><?= htmlspecialchars(PIXIV_GALLERY_TITLE) ?></h1>
+    <a class="admin-link" href="admin.php" title="Administration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+    </a>
 </header>
 
 <!-- Sélecteur de personnages généré depuis config.php -->
