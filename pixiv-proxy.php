@@ -1,28 +1,21 @@
 <?php
 // ============================================================
 //  pixiv-proxy.php — Proxy serveur vers l'API Pixiv
-//  Appelé en AJAX par galerie.php
-//  Le cookie ne quitte jamais le serveur.
+//  Peut être appelé depuis la racine ou depuis galleries/
 // ============================================================
-
 require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-// --- Validation des paramètres entrants ---
 $tag      = trim($_GET['tag']      ?? '');
 $page     = max(1, intval($_GET['page']     ?? 1));
 $per_page = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
 $order    = $_GET['order'] ?? PIXIV_DEFAULT_ORDER;
 $mode     = $_GET['mode']  ?? PIXIV_DEFAULT_MODE;
+$gallery  = trim($_GET['gallery'] ?? '');   // slug de la galerie concernée
 
-// Validation per_page
 if (!in_array($per_page, [28, 56, 112], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
-
-// Validation order
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
-
-// Validation mode
 if (!in_array($mode, ['safe', 'r18', 'all'], true)) $mode = PIXIV_DEFAULT_MODE;
 
 if ($tag === '') {
@@ -31,15 +24,30 @@ if ($tag === '') {
     exit;
 }
 
-// Vérifie que le tag demandé fait partie de la liste autorisée
-$allowed_tags = array_column(PIXIV_CHARACTERS, 'tag');
+// Vérifie que le tag est bien dans la galerie demandée
+$allowed_tags = [];
+if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
+    $gdata = load_gallery($gallery);
+    if ($gdata) {
+        $allowed_tags = array_column($gdata['characters'], 'tag');
+    }
+}
+
+// Fallback : parcourir toutes les galeries
+if (empty($allowed_tags)) {
+    foreach (list_galleries() as $g) {
+        foreach ($g['characters'] as $char) {
+            $allowed_tags[] = $char['tag'];
+        }
+    }
+}
+
 if (!in_array($tag, $allowed_tags, true)) {
     http_response_code(403);
     echo json_encode(['error' => 'Tag non autorisé.']);
     exit;
 }
 
-// --- Construction de l'URL Pixiv AJAX ---
 $params = http_build_query([
     'word'    => $tag,
     'order'   => $order,
@@ -52,7 +60,6 @@ $params = http_build_query([
 
 $url = 'https://www.pixiv.net/ajax/search/artworks/' . rawurlencode($tag) . '?' . $params;
 
-// --- Requête cURL vers Pixiv ---
 $ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -78,7 +85,6 @@ if ($curl_err) {
     echo json_encode(['error' => 'Erreur réseau : ' . $curl_err]);
     exit;
 }
-
 if ($http_code !== 200) {
     http_response_code(502);
     echo json_encode(['error' => 'Pixiv a répondu avec le code HTTP ' . $http_code]);
@@ -86,19 +92,14 @@ if ($http_code !== 200) {
 }
 
 $data = json_decode($response, true);
-
 if (!$data || ($data['error'] ?? false)) {
     http_response_code(502);
     echo json_encode(['error' => 'Réponse invalide de Pixiv.']);
     exit;
 }
 
-// --- Extraction et nettoyage des données utiles ---
 $raw_works = $data['body']['illustManga']['data'] ?? [];
 $total     = $data['body']['illustManga']['total'] ?? 0;
-
-// Pixiv renvoie toujours 60 résultats max par page ;
-// on tronque côté serveur selon per_page demandé.
 $raw_works = array_slice($raw_works, 0, $per_page);
 
 $works = [];

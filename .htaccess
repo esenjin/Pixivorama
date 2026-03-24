@@ -1,5 +1,11 @@
-# Protège config.php et settings.json contre tout accès direct
+# Protège config.php, settings.json et tous les fichiers JSON de galeries
 <FilesMatch "^(config\.php|settings\.json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protège les fichiers JSON dans galleries/
+<FilesMatch "\.json$">
     Order allow,deny
     Deny from all
 </FilesMatch>

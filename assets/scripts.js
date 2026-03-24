@@ -2,13 +2,14 @@
    scripts.js — Galerie Pixiv
    ============================================================ */
 
-const PROXY_URL = 'pixiv-proxy.php';
+// PIXIV_PROXY_URL peut être défini par la page hôte (ex : '../pixiv-proxy.php')
+const PROXY_URL = window.PIXIV_PROXY_URL || 'pixiv-proxy.php';
 
 let currentTag     = window.PIXIV_INITIAL_TAG;
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
-let currentMode    = 'safe';      // 'safe' | 'r18' | 'all'
+let currentMode    = 'safe';
 let totalWorks     = 0;
 let loading        = false;
 
@@ -88,7 +89,6 @@ function render(works) {
         </a>`;
     }).join('');
 
-    // Tooltip sur les cartes
     attachTooltips();
 }
 
@@ -101,9 +101,7 @@ function attachTooltips() {
             positionTooltip(e);
         });
         card.addEventListener('mousemove', positionTooltip);
-        card.addEventListener('mouseleave', () => {
-            tooltip.classList.remove('visible');
-        });
+        card.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
     });
 }
 
@@ -111,7 +109,6 @@ function positionTooltip(e) {
     const margin = 14;
     let x = e.clientX + margin;
     let y = e.clientY + margin;
-    // Eviter le débordement à droite
     if (x + tooltip.offsetWidth + margin > window.innerWidth) {
         x = e.clientX - tooltip.offsetWidth - margin;
     }
@@ -194,8 +191,6 @@ function resetPage() {
 }
 
 // ── Contrôles ──
-
-// Tri
 document.getElementById('orderPicker').addEventListener('click', e => {
     const btn = e.target.closest('.pill');
     if (!btn || btn.classList.contains('active')) return;
@@ -205,7 +200,6 @@ document.getElementById('orderPicker').addEventListener('click', e => {
     resetPage();
 });
 
-// Par page
 document.getElementById('perPagePicker').addEventListener('click', e => {
     const btn = e.target.closest('.pill');
     if (!btn || btn.classList.contains('active')) return;
@@ -215,22 +209,17 @@ document.getElementById('perPagePicker').addEventListener('click', e => {
     resetPage();
 });
 
-// Toggle 18+
 document.getElementById('r18Toggle').addEventListener('change', e => {
     currentMode = e.target.checked ? 'r18' : 'safe';
     resetPage();
 });
 
-// ── Bouton retour en haut ──
 window.addEventListener('scroll', () => {
     btnToTop.classList.toggle('visible', window.scrollY > 400);
 }, { passive: true });
 
-btnToTop.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-});
+btnToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-// ── Sélecteur de personnages ──
 document.getElementById('charSelector').addEventListener('click', e => {
     const btn = e.target.closest('.char-btn');
     if (!btn) return;
