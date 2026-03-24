@@ -493,3 +493,110 @@
     .admin-tabs { overflow-x: auto; }
     .admin-tab  { padding: .65rem .9rem; font-size: .6rem; }
 }
+
+/* ── Modale custom ── */
+.cmodal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(13,13,15,.75);
+    backdrop-filter: blur(4px);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+.cmodal-backdrop.visible { opacity: 1; }
+
+.cmodal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 2.2rem 1.6rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+    transform: translateY(-8px) scale(.97);
+    transition: transform .22s ease;
+}
+.cmodal-backdrop.visible .cmodal-box {
+    transform: translateY(0) scale(1);
+}
+
+.cmodal-msg {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .82rem;
+    font-weight: 300;
+    letter-spacing: .06em;
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: 1.6rem;
+}
+.cmodal-msg em {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--accent);
+}
+
+.cmodal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .75rem;
+}
+
+.cmodal-btn {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: .6rem 1.4rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background .2s, border-color .2s;
+    line-height: 1;
+}
+.cmodal-btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+.cmodal-btn-cancel:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+.cmodal-btn-danger {
+    background: rgba(192,119,106,.1);
+    border: 1px solid #c0776a;
+    color: #c0776a;
+}
+.cmodal-btn-danger:hover {
+    background: rgba(192,119,106,.2);
+}
+
+/* ── Handle drag galerie ── */
+.gallery-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--border);
+    font-size: 1rem;
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+    transition: color .2s;
+    margin-right: .3rem;
+}
+.gallery-drag-handle:hover { color: var(--text-muted); }
+.gallery-drag-handle:active { cursor: grabbing; }
+
+.gallery-item.drag-dragging { opacity: .4; }
+.gallery-item.drag-over {
+    box-shadow: 0 -2px 0 var(--accent) inset;
+    background: rgba(200,169,126,.04);
+}

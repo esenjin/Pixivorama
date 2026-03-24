@@ -118,6 +118,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Réorganiser les galeries ---
+    elseif ($action === 'reorder_galleries') {
+        $tab   = 'galleries';
+        $order = json_decode($_POST['gallery_order'] ?? '[]', true);
+        if (is_array($order)) {
+            // Rewrite each gallery JSON with a new 'order' key — we store order as a separate index file
+            $validSlugs = array_filter($order, 'is_valid_gallery_slug');
+            // Save order to settings
+            $SETTINGS['gallery_order'] = array_values($validSlugs);
+            save_settings($SETTINGS);
+            $success = 'Ordre des galeries mis à jour.';
+        } else {
+            $error = 'Données de réorganisation invalides.';
+        }
+    }
+
     // --- Supprimer une galerie ---
     elseif ($action === 'delete_gallery') {
         $slug = trim($_POST['gallery_slug'] ?? '');
@@ -196,6 +212,16 @@ function buildCharacters(array $labels, array $tags): array {
 
 // ── Affichage ──
 $galleries = list_galleries();
+
+// Appliquer l'ordre personnalisé si défini
+if (!empty($SETTINGS['gallery_order']) && is_array($SETTINGS['gallery_order'])) {
+    $orderMap = array_flip($SETTINGS['gallery_order']);
+    usort($galleries, function($a, $b) use ($orderMap) {
+        $ia = $orderMap[$a['slug']] ?? PHP_INT_MAX;
+        $ib = $orderMap[$b['slug']] ?? PHP_INT_MAX;
+        return $ia <=> $ib;
+    });
+}
 adminPage($SETTINGS, $galleries, $tab, $error, $success);
 
 // ════════════════════════════════════════════════════════════
@@ -324,8 +350,9 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         <?php else: ?>
             <div class="gallery-list" id="galleryList">
                 <?php foreach ($galleries as $g): ?>
-                <div class="gallery-item" id="gi-<?= htmlspecialchars($g['slug']) ?>">
+                <div class="gallery-item" id="gi-<?= htmlspecialchars($g['slug']) ?>" data-slug="<?= htmlspecialchars($g['slug']) ?>">
                     <div class="gallery-item-header" onclick="toggleGallery('<?= htmlspecialchars($g['slug']) ?>')">
+                        <span class="gallery-drag-handle" draggable="true" title="Glisser pour réordonner" onclick="event.stopPropagation()">⠿</span>
                         <div class="gallery-item-info">
                             <span class="gallery-item-title"><?= htmlspecialchars($g['title']) ?></span>
                             <span class="gallery-item-meta">
@@ -359,8 +386,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                             </div>
                             <div class="char-list" id="cl-<?= htmlspecialchars($g['slug']) ?>">
                                 <?php foreach ($g['characters'] as $char): ?>
-                                <div class="char-row" draggable="true">
-                                    <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
+                                <div class="char-row">
+                                    <span class="drag-handle" draggable="true" title="Glisser pour réordonner">⠿</span>
                                     <input type="text" name="char_label[]"
                                            value="<?= htmlspecialchars($char['label']) ?>"
                                            placeholder="Nom affiché" required>
@@ -440,8 +467,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <span></span>
             </div>
             <div class="char-list" id="newCharList">
-                <div class="char-row" draggable="true">
-                    <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
+                <div class="char-row">
+                    <span class="drag-handle" draggable="true" title="Glisser pour réordonner">⠿</span>
                     <input type="text" name="char_label[]" placeholder="Nom affiché" required>
                     <input type="text" name="char_tag[]"   placeholder="Tag Pixiv" required>
                     <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
@@ -473,6 +500,12 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <form method="POST" id="deleteForm" style="display:none">
         <input type="hidden" name="action" value="delete_gallery">
         <input type="hidden" name="gallery_slug" id="deleteSlug">
+    </form>
+
+    <!-- Formulaire de réorganisation (invisible, soumis par JS) -->
+    <form method="POST" id="reorderForm" style="display:none">
+        <input type="hidden" name="action" value="reorder_galleries">
+        <input type="hidden" name="gallery_order" id="galleryOrder">
     </form>
     <?php endif; ?>
 
@@ -549,6 +582,64 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 </div><!-- /.admin-wrap -->
 
 <script>
+// ════════════════════════════════════════════════════════════
+//  MODALE CUSTOM (remplace alert / confirm natifs)
+// ════════════════════════════════════════════════════════════
+(function () {
+    // Injection du DOM de la modale
+    const tpl = document.createElement('div');
+    tpl.innerHTML = `
+    <div id="customModal" class="cmodal-backdrop" style="display:none" aria-modal="true" role="dialog">
+        <div class="cmodal-box">
+            <p class="cmodal-msg" id="cmodalMsg"></p>
+            <div class="cmodal-actions" id="cmodalActions"></div>
+        </div>
+    </div>`;
+    document.body.appendChild(tpl.firstElementChild);
+
+    window._modal = function (msg, { confirm = false } = {}) {
+        return new Promise(resolve => {
+            const backdrop = document.getElementById('customModal');
+            const msgEl    = document.getElementById('cmodalMsg');
+            const actions  = document.getElementById('cmodalActions');
+
+            msgEl.innerHTML = msg.replace(/\n/g, '<br>');
+            actions.innerHTML = '';
+
+            if (confirm) {
+                const btnOk = document.createElement('button');
+                btnOk.className   = 'cmodal-btn cmodal-btn-danger';
+                btnOk.textContent = 'Supprimer';
+                btnOk.onclick = () => { close(); resolve(true); };
+
+                const btnCancel = document.createElement('button');
+                btnCancel.className   = 'cmodal-btn cmodal-btn-cancel';
+                btnCancel.textContent = 'Annuler';
+                btnCancel.onclick = () => { close(); resolve(false); };
+
+                actions.append(btnCancel, btnOk);
+            } else {
+                const btnOk = document.createElement('button');
+                btnOk.className   = 'cmodal-btn cmodal-btn-cancel';
+                btnOk.textContent = 'OK';
+                btnOk.onclick = () => { close(); resolve(true); };
+                actions.append(btnOk);
+            }
+
+            backdrop.style.display = 'flex';
+            requestAnimationFrame(() => backdrop.classList.add('visible'));
+
+            // Fermeture sur backdrop
+            backdrop.onclick = e => { if (e.target === backdrop) { close(); resolve(false); } };
+
+            function close () {
+                backdrop.classList.remove('visible');
+                setTimeout(() => { backdrop.style.display = 'none'; }, 220);
+            }
+        });
+    };
+})();
+
 // ── Vérification cookie (onglet session uniquement) ──
 <?php if ($tab === 'session'): ?>
 (async function checkCookie() {
@@ -600,15 +691,14 @@ function addRow(listId) {
     const list = document.getElementById(listId);
     const row  = document.createElement('div');
     row.className  = 'char-row';
-    row.draggable  = true;
     row.innerHTML  = `
-        <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
+        <span class="drag-handle" draggable="true" title="Glisser pour réordonner">⠿</span>
         <input type="text" name="char_label[]" placeholder="Nom affiché" required>
         <input type="text" name="char_tag[]"   placeholder="Tag Pixiv" required>
         <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
     `;
     list.appendChild(row);
-    initDragRow(row);
+    initDragHandle(row.querySelector('.drag-handle'));
     row.querySelector('input').focus();
 }
 
@@ -616,70 +706,147 @@ function removeRow(btn) {
     const list = btn.closest('.char-list');
     const rows = list ? list.querySelectorAll('.char-row') : [];
     if (rows.length <= 1) {
-        alert('Conservez au moins un tag.');
+        _modal('Conservez au moins un tag.');
         return;
     }
     btn.closest('.char-row').remove();
 }
 
-// ── Drag & drop pour réorganiser les tags ──
-let dragSrc = null;
+// ════════════════════════════════════════════════════════════
+//  DRAG & DROP — Tags (handle seul)
+// ════════════════════════════════════════════════════════════
+let dragSrcRow = null;
 
-function initDragRow(row) {
-    row.addEventListener('dragstart', onDragStart);
-    row.addEventListener('dragover',  onDragOver);
-    row.addEventListener('drop',      onDrop);
-    row.addEventListener('dragend',   onDragEnd);
-    row.addEventListener('dragleave', onDragLeave);
+function initDragHandle(handle) {
+    const row = handle.closest('.char-row');
+
+    handle.addEventListener('dragstart', e => {
+        dragSrcRow = row;
+        row.classList.add('drag-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+    });
+
+    handle.addEventListener('dragend', () => {
+        document.querySelectorAll('.char-row').forEach(r =>
+            r.classList.remove('drag-dragging', 'drag-over')
+        );
+        dragSrcRow = null;
+    });
 }
 
-function onDragStart(e) {
-    dragSrc = this;
-    this.classList.add('drag-dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', ''); // requis Firefox
-}
-
-function onDragOver(e) {
+// Les events dragover/drop restent sur les lignes (zones de dépôt)
+document.addEventListener('dragover', e => {
+    const target = e.target.closest('.char-row');
+    if (!target || !dragSrcRow || target === dragSrcRow) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (this !== dragSrc) this.classList.add('drag-over');
-    return false;
-}
+    // Supprimer drag-over des autres lignes du même container
+    dragSrcRow.closest('.char-list')
+        ?.querySelectorAll('.char-row')
+        .forEach(r => r.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+});
 
-function onDragLeave() {
-    this.classList.remove('drag-over');
-}
+document.addEventListener('dragleave', e => {
+    const target = e.target.closest('.char-row');
+    if (target) target.classList.remove('drag-over');
+});
 
-function onDrop(e) {
+document.addEventListener('drop', e => {
+    const target = e.target.closest('.char-row');
+    if (!target || !dragSrcRow || target === dragSrcRow) return;
+    if (target.closest('.char-list') !== dragSrcRow.closest('.char-list')) return;
+    e.preventDefault();
     e.stopPropagation();
-    if (this === dragSrc) return;
-    const list   = this.closest('.char-list');
+    const list   = target.closest('.char-list');
     const rows   = [...list.querySelectorAll('.char-row')];
-    const srcIdx = rows.indexOf(dragSrc);
-    const tgtIdx = rows.indexOf(this);
-    if (srcIdx < tgtIdx) {
-        list.insertBefore(dragSrc, this.nextSibling);
-    } else {
-        list.insertBefore(dragSrc, this);
-    }
-    this.classList.remove('drag-over');
-    return false;
-}
+    const srcIdx = rows.indexOf(dragSrcRow);
+    const tgtIdx = rows.indexOf(target);
+    list.insertBefore(dragSrcRow, srcIdx < tgtIdx ? target.nextSibling : target);
+    target.classList.remove('drag-over');
+});
 
-function onDragEnd() {
-    document.querySelectorAll('.char-row').forEach(r => {
-        r.classList.remove('drag-dragging', 'drag-over');
+// Initialiser les handles existants
+document.querySelectorAll('.char-row .drag-handle').forEach(initDragHandle);
+
+// ════════════════════════════════════════════════════════════
+//  DRAG & DROP — Galeries (réorganisation)
+// ════════════════════════════════════════════════════════════
+let dragSrcGallery = null;
+
+function initGalleryDragHandle(handle) {
+    const item = handle.closest('.gallery-item');
+
+    handle.addEventListener('dragstart', e => {
+        dragSrcGallery = item;
+        item.classList.add('drag-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        e.stopPropagation();
     });
-    dragSrc = null;
+
+    handle.addEventListener('dragend', () => {
+        document.querySelectorAll('.gallery-item').forEach(i =>
+            i.classList.remove('drag-dragging', 'drag-over')
+        );
+        // Sauvegarder le nouvel ordre automatiquement
+        saveGalleryOrder();
+        dragSrcGallery = null;
+    });
 }
 
-// Initialiser le drag sur toutes les lignes existantes
-document.querySelectorAll('.char-row').forEach(initDragRow);
+document.addEventListener('dragover', e => {
+    const target = e.target.closest('.gallery-item');
+    if (!target || !dragSrcGallery || target === dragSrcGallery) return;
+    if (target.closest('#galleryList') !== dragSrcGallery.closest('#galleryList')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+}, true);
+
+document.addEventListener('dragleave', e => {
+    const target = e.target.closest('.gallery-item');
+    if (target) target.classList.remove('drag-over');
+}, true);
+
+document.addEventListener('drop', e => {
+    const target = e.target.closest('.gallery-item');
+    if (!target || !dragSrcGallery || target === dragSrcGallery) return;
+    if (target.closest('#galleryList') !== dragSrcGallery.closest('#galleryList')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const list   = target.closest('#galleryList');
+    const items  = [...list.querySelectorAll(':scope > .gallery-item')];
+    const srcIdx = items.indexOf(dragSrcGallery);
+    const tgtIdx = items.indexOf(target);
+    list.insertBefore(dragSrcGallery, srcIdx < tgtIdx ? target.nextSibling : target);
+    target.classList.remove('drag-over');
+}, true);
+
+function saveGalleryOrder() {
+    const list = document.getElementById('galleryList');
+    if (!list) return;
+    const slugs = [...list.querySelectorAll(':scope > .gallery-item[data-slug]')]
+        .map(i => i.dataset.slug);
+    const orderInput = document.getElementById('galleryOrder');
+    const form       = document.getElementById('reorderForm');
+    if (!orderInput || !form) return;
+    orderInput.value = JSON.stringify(slugs);
+    form.submit();
+}
+
+// Initialiser les handles de galeries
+document.querySelectorAll('.gallery-drag-handle').forEach(initGalleryDragHandle);
 
 // ── Confirmation de suppression ──
-function confirmDelete(slug, title) {
-    if (!confirm(`Supprimer la galerie « ${title} » (${slug}) ?\n\nCette action est irréversible.`)) return;
+async function confirmDelete(slug, title) {
+    const ok = await _modal(
+        `Supprimer la galerie « <em>${title}</em> » (${slug}) ?<br><br>Cette action est irréversible.`,
+        { confirm: true }
+    );
+    if (!ok) return;
     document.getElementById('deleteSlug').value = slug;
     document.getElementById('deleteForm').submit();
 }
