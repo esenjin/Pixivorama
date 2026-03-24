@@ -1,0 +1,449 @@
+/* ============================================================
+   Pixivorama — CSS CONNEXION
+   ============================================================ */
+
+.login-wrap {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+.login-box {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+}
+.login-box h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 1.6rem;
+    color: var(--text);
+    text-align: center;
+}
+.login-box .site-label {
+    text-align: center;
+    margin-bottom: -.6rem;
+}
+.field { display: flex; flex-direction: column; gap: .5rem; }
+.field label {
+    font-size: .65rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .85rem;
+    padding: .65rem .9rem;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent-dim); }
+.btn-primary {
+    background: rgba(200,169,126,.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .7rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: .75rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s;
+    width: 100%;
+}
+.btn-primary:hover { background: rgba(200,169,126,.18); }
+.alert-error {
+    background: rgba(192,119,106,.1);
+    border: 1px solid #c0776a;
+    color: #c0776a;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    padding: .6rem .9rem;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+/* ============================================================
+   Pixivorama — CSS ADMIN
+   ============================================================ */
+
+/* ── Layout admin ── */
+.admin-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 2rem 6rem;
+}
+.admin-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--border);
+}
+.admin-header h1 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+}
+.admin-header a {
+    font-size: .65rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color .2s;
+}
+.admin-header a:hover { color: var(--text); }
+
+/* ── Sections ── */
+.admin-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.8rem 2rem;
+    margin-bottom: 1.5rem;
+}
+.section-title {
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.4rem;
+    padding-bottom: .8rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Champs ── */
+.field { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+.field:last-of-type { margin-bottom: 0; }
+.field label {
+    font-size: .65rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.field input[type="text"],
+.field input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .85rem;
+    padding: .65rem .9rem;
+    border-radius: var(--radius);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent-dim); }
+.field .hint {
+    font-size: .6rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+}
+
+/* ── Boutons ── */
+.btn-primary {
+    background: rgba(200,169,126,.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: .65rem 1.4rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s;
+    margin-top: 1.2rem;
+}
+.btn-primary:hover { background: rgba(200,169,126,.18); }
+.btn-danger {
+    background: transparent;
+    border: 1px solid #6a3030;
+    color: #c0776a;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: .4rem .8rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background .2s, border-color .2s;
+    line-height: 1;
+}
+.btn-danger:hover { background: rgba(192,119,106,.1); border-color: #c0776a; }
+.btn-add {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    padding: .6rem 1.2rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .2s, color .2s;
+    width: 100%;
+    margin-top: .5rem;
+}
+.btn-add:hover { border-color: var(--accent-dim); color: var(--text); }
+
+/* ── Alertes ── */
+.alert {
+    padding: .75rem 1rem;
+    border-radius: var(--radius);
+    font-size: .72rem;
+    letter-spacing: .08em;
+    margin-bottom: 1.5rem;
+}
+.alert-success {
+    background: rgba(126,200,150,.08);
+    border: 1px solid #4a9060;
+    color: #7ec896;
+}
+.alert-error {
+    background: rgba(192,119,106,.08);
+    border: 1px solid #c0776a;
+    color: #c0776a;
+}
+
+/* ── Tableau personnages ── */
+.char-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: .6rem;
+    align-items: center;
+    margin-bottom: .6rem;
+}
+.char-row input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .82rem;
+    padding: .55rem .8rem;
+    border-radius: var(--radius);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+}
+.char-row input:focus { border-color: var(--accent-dim); }
+.char-row-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: .6rem;
+    margin-bottom: .4rem;
+}
+.char-row-header span {
+    font-size: .6rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-left: .1rem;
+}
+
+@media (max-width: 520px) {
+    .admin-wrap { padding: 1.5rem 1rem 5rem; }
+    .admin-section { padding: 1.2rem 1rem; }
+    .char-row { grid-template-columns: 1fr; }
+    .char-row-header { display: none; }
+}
+
+/* ── Badge statut cookie Pixiv ── */
+.cookie-status {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .6rem .9rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1.2rem;
+    font-size: .68rem;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    min-height: 2.4rem;
+}
+.cookie-status-dot {
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--border);
+    transition: background .3s;
+}
+.cookie-status-dot.valid   { background: #5db87a; box-shadow: 0 0 6px rgba(93,184,122,.4); }
+.cookie-status-dot.invalid { background: #c0776a; box-shadow: 0 0 6px rgba(192,119,106,.4); }
+.cookie-status-text { transition: color .3s; }
+.cookie-status:has(.cookie-status-dot.valid)   .cookie-status-text { color: #7ec896; }
+.cookie-status:has(.cookie-status-dot.invalid) .cookie-status-text { color: #c0776a; }
+
+/* ── Onglets admin ── */
+.admin-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+}
+.admin-tab {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: .75rem 1.4rem;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color .2s, border-color .2s;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    white-space: nowrap;
+}
+.admin-tab:hover { color: var(--text); }
+.admin-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+.tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 .3rem;
+    background: rgba(200,169,126,.15);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    font-size: .55rem;
+    border-radius: 99px;
+    letter-spacing: 0;
+}
+
+/* ── Liste des galeries ── */
+.gallery-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.gallery-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.gallery-item:has(.gallery-item-body[style*="block"]) {
+    border-color: var(--accent-dim);
+}
+
+.gallery-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .9rem 1.1rem;
+    cursor: pointer;
+    background: var(--bg);
+    transition: background .2s;
+    gap: 1rem;
+}
+.gallery-item-header:hover { background: rgba(255,255,255,.02); }
+
+.gallery-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 0;
+}
+.gallery-item-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gallery-item-meta {
+    font-size: .6rem;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+}
+.gallery-item-meta code {
+    font-family: 'Josefin Sans', monospace;
+    color: var(--accent-dim);
+    background: rgba(200,169,126,.06);
+    padding: .1rem .4rem;
+    border-radius: 2px;
+    letter-spacing: 0;
+    font-size: .65rem;
+}
+.gallery-item-actions {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-shrink: 0;
+}
+.btn-small {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .6rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: .3rem .7rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: color .2s, border-color .2s;
+    line-height: 1;
+}
+.btn-small:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+.gallery-chevron {
+    font-size: .8rem;
+    color: var(--text-muted);
+    transition: color .2s;
+    user-select: none;
+}
+.gallery-item-header:hover .gallery-chevron { color: var(--text); }
+
+.gallery-item-body {
+    padding: 1.2rem 1.1rem 1.4rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+/* Bouton supprimer (variante large) */
+.btn-delete {
+    padding: .65rem 1.2rem;
+    font-size: .65rem;
+}
+
+/* ── Formulaire création galerie ── */
+#createForm .field { margin-bottom: 0; }
+
+/* Responsive onglets */
+@media (max-width: 480px) {
+    .admin-tabs { overflow-x: auto; }
+    .admin-tab  { padding: .65rem .9rem; font-size: .6rem; }
+}
