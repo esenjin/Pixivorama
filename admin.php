@@ -188,6 +188,13 @@ function adminPage(array $settings, string $error, string $success): void {
     <!-- ── Section : Pixiv Session ── -->
     <section class="admin-section">
         <p class="section-title">Cookie de session Pixiv</p>
+
+        <!-- Badge de statut du cookie -->
+        <div class="cookie-status" id="cookieStatus">
+            <span class="cookie-status-dot" id="cookieStatusDot"></span>
+            <span class="cookie-status-text" id="cookieStatusText">Vérification en cours…</span>
+        </div>
+
         <form method="POST">
             <input type="hidden" name="action" value="update_sessid">
             <div class="field">
@@ -274,6 +281,30 @@ function adminPage(array $settings, string $error, string $success): void {
 </div>
 
 <script>
+// ── Vérification du cookie Pixiv au chargement ──
+(async function checkCookie() {
+    const dot  = document.getElementById('cookieStatusDot');
+    const text = document.getElementById('cookieStatusText');
+
+    try {
+        const res  = await fetch('pixiv-check.php');
+        const data = await res.json();
+
+        if (data.valid) {
+            dot.className  = 'cookie-status-dot valid';
+            text.textContent = data.username
+                ? `Cookie valide — connecté en tant que ${data.username}`
+                : 'Cookie valide — session active';
+        } else {
+            dot.className  = 'cookie-status-dot invalid';
+            text.textContent = `Cookie invalide — ${data.reason}`;
+        }
+    } catch (err) {
+        dot.className  = 'cookie-status-dot invalid';
+        text.textContent = 'Impossible de joindre Pixiv pour vérifier le cookie.';
+    }
+})();
+
 function addRow() {
     const row = document.createElement('div');
     row.className = 'char-row';

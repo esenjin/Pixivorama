@@ -787,3 +787,32 @@ h1 {
     .char-row { grid-template-columns: 1fr; }
     .char-row-header { display: none; }
 }
+
+/* ── Badge statut cookie Pixiv ── */
+.cookie-status {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .6rem .9rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1.2rem;
+    font-size: .68rem;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    min-height: 2.4rem;
+}
+.cookie-status-dot {
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--border);
+    transition: background .3s;
+}
+.cookie-status-dot.valid   { background: #5db87a; box-shadow: 0 0 6px rgba(93,184,122,.4); }
+.cookie-status-dot.invalid { background: #c0776a; box-shadow: 0 0 6px rgba(192,119,106,.4); }
+.cookie-status-text { transition: color .3s; }
+.cookie-status:has(.cookie-status-dot.valid)   .cookie-status-text { color: #7ec896; }
+.cookie-status:has(.cookie-status-dot.invalid) .cookie-status-text { color: #c0776a; }
