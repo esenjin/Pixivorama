@@ -158,6 +158,12 @@
     letter-spacing: .08em;
 }
 
+.hint {
+    font-size: .6rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+}
+
 /* ── Boutons ── */
 .btn-primary {
     background: rgba(200,169,126,.1);

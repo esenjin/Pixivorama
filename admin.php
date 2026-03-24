@@ -398,6 +398,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                                 </div>
                                 <?php endforeach; ?>
                             </div>
+                            <span class="hint">Consultez <a href="https://git.crystalyx.net/Esenjin_Asakha/Pixivorama/wiki/Bien-choisir-ses-tags-Pixiv" target="_blank" rel="noopener" style="color:var(--text-muted);">le guide</a> sur l'utilisation des tags Pixiv.</span>
                             <button type="button" class="btn-add"
                                     onclick="addRow('cl-<?= htmlspecialchars($g['slug']) ?>')">+ Ajouter un tag</button>
 
@@ -474,6 +475,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                     <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
                 </div>
             </div>
+            <span class="hint">Consultez <a href="https://git.crystalyx.net/Esenjin_Asakha/Pixivorama/wiki/Bien-choisir-ses-tags-Pixiv" target="_blank" rel="noopener" style="color:var(--text-muted);">le guide</a> sur l'utilisation des tags Pixiv.</span>
             <button type="button" class="btn-add" onclick="addRow('newCharList')">+ Ajouter un tag</button>
 
             <!-- Lien personnalisé footer -->
