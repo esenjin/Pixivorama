@@ -228,10 +228,12 @@
 /* ── Tableau personnages ── */
 .char-row {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: auto 1fr 1fr auto;
     gap: .6rem;
     align-items: center;
     margin-bottom: .6rem;
+    border-radius: var(--radius);
+    transition: background .15s, opacity .15s, box-shadow .15s;
 }
 .char-row input {
     background: var(--bg);
@@ -248,7 +250,7 @@
 .char-row input:focus { border-color: var(--accent-dim); }
 .char-row-header {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: auto 1fr 1fr auto;
     gap: .6rem;
     margin-bottom: .4rem;
 }
@@ -260,11 +262,55 @@
     padding-left: .1rem;
 }
 
+/* ── Drag handle ── */
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    color: var(--border);
+    font-size: 1rem;
+    cursor: grab;
+    user-select: none;
+    transition: color .2s;
+    flex-shrink: 0;
+}
+.drag-handle:hover { color: var(--text-muted); }
+.drag-handle:active { cursor: grabbing; }
+
+/* ── États drag & drop ── */
+.char-row.drag-dragging {
+    opacity: .4;
+    background: rgba(200,169,126,.04);
+}
+.char-row.drag-over {
+    background: rgba(200,169,126,.07);
+    box-shadow: 0 -2px 0 var(--accent) inset;
+}
+
+/* ── Bloc lien footer ── */
+.footer-link-fields {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+}
+.footer-link-label-section {
+    font-size: .6rem;
+    font-weight: 400;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .8rem;
+}
+
 @media (max-width: 520px) {
     .admin-wrap { padding: 1.5rem 1rem 5rem; }
     .admin-section { padding: 1.2rem 1rem; }
-    .char-row { grid-template-columns: 1fr; }
+    .char-row { grid-template-columns: auto 1fr auto; }
+    .char-row input:last-of-type { grid-column: 2; }
     .char-row-header { display: none; }
+    .footer-link-fields > div { grid-template-columns: 1fr !important; }
 }
 
 /* ── Badge statut cookie Pixiv ── */

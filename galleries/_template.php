@@ -101,6 +101,15 @@ $characters    = $gallery['characters'];
             Dépôt
         </a>
         <span class="footer-sep"></span>
+        <?php if (!empty($gallery['footer_link_label']) && !empty($gallery['footer_link_url'])): ?>
+        <a class="footer-link" href="<?= htmlspecialchars($gallery['footer_link_url']) ?>" target="_blank" rel="noopener">
+            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <?= htmlspecialchars($gallery['footer_link_label']) ?>
+        </a>
+        <span class="footer-sep"></span>
+        <?php endif; ?>
     </div>
 </footer>
 

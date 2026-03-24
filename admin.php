@@ -74,7 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($characters)) {
                 $error = 'Ajoutez au moins un personnage/tag.';
             } else {
-                save_gallery($slug, ['title' => $title, 'characters' => $characters]);
+                $footer_label = trim($_POST['footer_link_label'] ?? '');
+                $footer_url   = trim($_POST['footer_link_url']   ?? '');
+                $gdata = ['title' => $title, 'characters' => $characters];
+                if ($footer_label !== '' && $footer_url !== '') {
+                    $gdata['footer_link_label'] = $footer_label;
+                    $gdata['footer_link_url']   = $footer_url;
+                }
+                save_gallery($slug, $gdata);
                 create_gallery_php($slug);
                 $success = "Galerie « {$title} » créée.";
             }
@@ -98,7 +105,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($characters)) {
                 $error = 'Conservez au moins un personnage/tag.';
             } else {
-                save_gallery($slug, ['title' => $title, 'characters' => $characters]);
+                $footer_label = trim($_POST['footer_link_label'] ?? '');
+                $footer_url   = trim($_POST['footer_link_url']   ?? '');
+                $gdata = ['title' => $title, 'characters' => $characters];
+                if ($footer_label !== '' && $footer_url !== '') {
+                    $gdata['footer_link_label'] = $footer_label;
+                    $gdata['footer_link_url']   = $footer_url;
+                }
+                save_gallery($slug, $gdata);
                 $success = "Galerie « {$title} » mise à jour.";
             }
         }
@@ -143,8 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '') {
             $error = 'Le titre ne peut pas être vide.';
         } else {
-            $SETTINGS['home_title']       = $title;
-            $SETTINGS['home_description'] = $desc;
+            $SETTINGS['home_title']            = $title;
+            $SETTINGS['home_description']      = $desc;
+            $SETTINGS['home_footer_link_label'] = trim($_POST['home_footer_link_label'] ?? '');
+            $SETTINGS['home_footer_link_url']   = trim($_POST['home_footer_link_url']   ?? '');
             save_settings($SETTINGS);
             $success = 'Page d\'accueil mise à jour.';
         }
@@ -336,13 +352,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                             </div>
 
                             <div class="char-row-header">
+                                <span></span>
                                 <span>Label affiché</span>
                                 <span>Tag Pixiv</span>
                                 <span></span>
                             </div>
                             <div class="char-list" id="cl-<?= htmlspecialchars($g['slug']) ?>">
                                 <?php foreach ($g['characters'] as $char): ?>
-                                <div class="char-row">
+                                <div class="char-row" draggable="true">
+                                    <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
                                     <input type="text" name="char_label[]"
                                            value="<?= htmlspecialchars($char['label']) ?>"
                                            placeholder="Nom affiché" required>
@@ -355,6 +373,26 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                             </div>
                             <button type="button" class="btn-add"
                                     onclick="addRow('cl-<?= htmlspecialchars($g['slug']) ?>')">+ Ajouter un tag</button>
+
+                            <!-- Lien personnalisé footer -->
+                            <div class="footer-link-fields">
+                                <p class="footer-link-label-section">Lien personnalisé dans le pied de page</p>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+                                    <div class="field" style="margin-bottom:0;">
+                                        <label>Label du lien</label>
+                                        <input type="text" name="footer_link_label"
+                                               value="<?= htmlspecialchars($g['footer_link_label'] ?? '') ?>"
+                                               placeholder="ex : Lire l'article">
+                                    </div>
+                                    <div class="field" style="margin-bottom:0;">
+                                        <label>URL</label>
+                                        <input type="url" name="footer_link_url"
+                                               value="<?= htmlspecialchars($g['footer_link_url'] ?? '') ?>"
+                                               placeholder="https://…">
+                                    </div>
+                                </div>
+                                <span class="hint">Laissez les deux champs vides pour masquer le lien.</span>
+                            </div>
 
                             <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.2rem;">
                                 <button type="submit" class="btn-primary" style="margin-top:0;flex:1;min-width:120px;">Enregistrer</button>
@@ -396,18 +434,37 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             </div>
 
             <div class="char-row-header">
+                <span></span>
                 <span>Label affiché</span>
                 <span>Tag Pixiv</span>
                 <span></span>
             </div>
             <div class="char-list" id="newCharList">
-                <div class="char-row">
+                <div class="char-row" draggable="true">
+                    <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
                     <input type="text" name="char_label[]" placeholder="Nom affiché" required>
                     <input type="text" name="char_tag[]"   placeholder="Tag Pixiv" required>
                     <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
                 </div>
             </div>
             <button type="button" class="btn-add" onclick="addRow('newCharList')">+ Ajouter un tag</button>
+
+            <!-- Lien personnalisé footer -->
+            <div class="footer-link-fields">
+                <p class="footer-link-label-section">Lien personnalisé dans le pied de page</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+                    <div class="field" style="margin-bottom:0;">
+                        <label>Label du lien</label>
+                        <input type="text" name="footer_link_label" placeholder="ex : Lire l'article">
+                    </div>
+                    <div class="field" style="margin-bottom:0;">
+                        <label>URL</label>
+                        <input type="url" name="footer_link_url" placeholder="https://…">
+                    </div>
+                </div>
+                <span class="hint">Laissez les deux champs vides pour masquer le lien.</span>
+            </div>
+
             <button type="submit" class="btn-primary">Créer la galerie</button>
         </form>
     </section>
@@ -441,6 +498,27 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                        placeholder="Illustrations Pixiv par personnage">
                 <span class="hint">Ligne de texte sous le titre. Laisser vide pour masquer.</span>
             </div>
+
+            <!-- Lien footer accueil -->
+            <div class="footer-link-fields">
+                <p class="footer-link-label-section">Lien personnalisé dans le pied de page</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+                    <div class="field" style="margin-bottom:0;">
+                        <label for="home_footer_link_label">Label du lien</label>
+                        <input type="text" id="home_footer_link_label" name="home_footer_link_label"
+                               value="<?= htmlspecialchars($settings['home_footer_link_label'] ?? '') ?>"
+                               placeholder="ex : Mon blog">
+                    </div>
+                    <div class="field" style="margin-bottom:0;">
+                        <label for="home_footer_link_url">URL</label>
+                        <input type="url" id="home_footer_link_url" name="home_footer_link_url"
+                               value="<?= htmlspecialchars($settings['home_footer_link_url'] ?? '') ?>"
+                               placeholder="https://…">
+                    </div>
+                </div>
+                <span class="hint">Laissez les deux champs vides pour masquer le lien.</span>
+            </div>
+
             <button type="submit" class="btn-primary">Mettre à jour</button>
         </form>
     </section>
@@ -511,7 +589,6 @@ if (slugInput) {
         const preview = document.getElementById('slugPreview');
         if (preview) preview.textContent = this.value || 'slug';
     });
-    // Sanitize à la volée
     slugInput.addEventListener('keypress', function (e) {
         const allowed = /[a-z0-9\-]/;
         if (!allowed.test(e.key)) e.preventDefault();
@@ -522,13 +599,16 @@ if (slugInput) {
 function addRow(listId) {
     const list = document.getElementById(listId);
     const row  = document.createElement('div');
-    row.className = 'char-row';
-    row.innerHTML = `
+    row.className  = 'char-row';
+    row.draggable  = true;
+    row.innerHTML  = `
+        <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
         <input type="text" name="char_label[]" placeholder="Nom affiché" required>
         <input type="text" name="char_tag[]"   placeholder="Tag Pixiv" required>
         <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
     `;
     list.appendChild(row);
+    initDragRow(row);
     row.querySelector('input').focus();
 }
 
@@ -541,6 +621,61 @@ function removeRow(btn) {
     }
     btn.closest('.char-row').remove();
 }
+
+// ── Drag & drop pour réorganiser les tags ──
+let dragSrc = null;
+
+function initDragRow(row) {
+    row.addEventListener('dragstart', onDragStart);
+    row.addEventListener('dragover',  onDragOver);
+    row.addEventListener('drop',      onDrop);
+    row.addEventListener('dragend',   onDragEnd);
+    row.addEventListener('dragleave', onDragLeave);
+}
+
+function onDragStart(e) {
+    dragSrc = this;
+    this.classList.add('drag-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ''); // requis Firefox
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (this !== dragSrc) this.classList.add('drag-over');
+    return false;
+}
+
+function onDragLeave() {
+    this.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+    e.stopPropagation();
+    if (this === dragSrc) return;
+    const list   = this.closest('.char-list');
+    const rows   = [...list.querySelectorAll('.char-row')];
+    const srcIdx = rows.indexOf(dragSrc);
+    const tgtIdx = rows.indexOf(this);
+    if (srcIdx < tgtIdx) {
+        list.insertBefore(dragSrc, this.nextSibling);
+    } else {
+        list.insertBefore(dragSrc, this);
+    }
+    this.classList.remove('drag-over');
+    return false;
+}
+
+function onDragEnd() {
+    document.querySelectorAll('.char-row').forEach(r => {
+        r.classList.remove('drag-dragging', 'drag-over');
+    });
+    dragSrc = null;
+}
+
+// Initialiser le drag sur toutes les lignes existantes
+document.querySelectorAll('.char-row').forEach(initDragRow);
 
 // ── Confirmation de suppression ──
 function confirmDelete(slug, title) {

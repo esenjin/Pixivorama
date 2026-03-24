@@ -5,8 +5,10 @@
 require_once __DIR__ . '/config.php';
 
 $galleries    = list_galleries();
-$home_title   = $SETTINGS['home_title']       ?? 'Galeries';
-$home_desc    = $SETTINGS['home_description'] ?? 'Illustrations Pixiv par personnage';
+$home_title   = $SETTINGS['home_title']            ?? 'Galeries';
+$home_desc    = $SETTINGS['home_description']      ?? 'Illustrations Pixiv par personnage';
+$home_fl_label = $SETTINGS['home_footer_link_label'] ?? '';
+$home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -18,221 +20,7 @@ $home_desc    = $SETTINGS['home_description'] ?? 'Illustrations Pixiv par person
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Josefin+Sans:wght@200;300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/styles.css">
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <style>
-        /* ── Page d'accueil ── */
-        .home-hero {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 5rem 2rem 3rem;
-            text-align: center;
-            position: relative;
-        }
-        .home-hero::after {
-            content: '';
-            display: block;
-            width: 40px;
-            height: 1px;
-            background: var(--accent);
-            margin: 1.8rem auto 0;
-        }
-        .home-tagline {
-            font-family: 'Josefin Sans', sans-serif;
-            font-size: .65rem;
-            font-weight: 400;
-            letter-spacing: .4em;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-top: 1rem;
-        }
 
-        /* ── Grille des galeries ── */
-        .galleries-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2px;
-            max-width: 1400px;
-            margin: 3rem auto 0;
-            padding: 0 2rem 6rem;
-        }
-
-        /* ── Carte galerie ── */
-        .gallery-card {
-            position: relative;
-            background: var(--card-bg);
-            overflow: hidden;
-            cursor: pointer;
-            text-decoration: none;
-            display: block;
-            aspect-ratio: 4 / 3;
-            opacity: 0;
-            transform: translateY(18px);
-            animation: fadeUp .55s forwards;
-        }
-        .gallery-card:nth-child(1) { animation-delay: .05s; }
-        .gallery-card:nth-child(2) { animation-delay: .12s; }
-        .gallery-card:nth-child(3) { animation-delay: .19s; }
-        .gallery-card:nth-child(4) { animation-delay: .26s; }
-        .gallery-card:nth-child(5) { animation-delay: .33s; }
-        .gallery-card:nth-child(6) { animation-delay: .40s; }
-
-        /* Mosaïque d'images en arrière-plan */
-        .gc-mosaic {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 2px;
-            transition: transform .6s ease;
-        }
-        .gallery-card:hover .gc-mosaic {
-            transform: scale(1.03);
-        }
-        .gc-mosaic-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            filter: brightness(.55) saturate(.8);
-            transition: filter .4s;
-        }
-        .gallery-card:hover .gc-mosaic-img {
-            filter: brightness(.4) saturate(.7);
-        }
-
-        /* Placeholder pendant le chargement */
-        .gc-mosaic-placeholder {
-            background: var(--surface);
-            animation: shimmer 1.6s infinite;
-            background: linear-gradient(90deg, #1a1a1e 25%, #22222a 50%, #1a1a1e 75%);
-            background-size: 200% 100%;
-        }
-
-        /* Overlay dégradé */
-        .gc-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(
-                to top,
-                rgba(13,13,15,.92) 0%,
-                rgba(13,13,15,.4)  50%,
-                rgba(13,13,15,.1)  100%
-            );
-            transition: background .4s;
-        }
-        .gallery-card:hover .gc-overlay {
-            background: linear-gradient(
-                to top,
-                rgba(13,13,15,.96) 0%,
-                rgba(13,13,15,.55) 50%,
-                rgba(13,13,15,.2)  100%
-            );
-        }
-
-        /* Contenu texte */
-        .gc-content {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 1.6rem 1.8rem;
-        }
-        .gc-label {
-            font-family: 'Josefin Sans', sans-serif;
-            font-size: .58rem;
-            font-weight: 400;
-            letter-spacing: .35em;
-            color: var(--accent);
-            text-transform: uppercase;
-            margin-bottom: .5rem;
-            opacity: 0;
-            transform: translateY(6px);
-            transition: opacity .35s .05s, transform .35s .05s;
-        }
-        .gallery-card:hover .gc-label { opacity: 1; transform: translateY(0); }
-        .gc-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: clamp(1.4rem, 2.5vw, 2rem);
-            font-weight: 300;
-            font-style: italic;
-            color: var(--text);
-            line-height: 1.15;
-            margin-bottom: .7rem;
-            transition: color .3s;
-        }
-        .gallery-card:hover .gc-title { color: #fff; }
-        .gc-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: .4rem;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height .4s ease, opacity .35s;
-            opacity: 0;
-        }
-        .gallery-card:hover .gc-tags {
-            max-height: 6rem;
-            opacity: 1;
-        }
-        .gc-tag {
-            font-family: 'Josefin Sans', sans-serif;
-            font-size: .6rem;
-            font-weight: 300;
-            letter-spacing: .1em;
-            color: var(--text-muted);
-            background: rgba(255,255,255,.05);
-            border: 1px solid var(--border);
-            padding: .25rem .6rem;
-            border-radius: 2px;
-        }
-        .gc-arrow {
-            position: absolute;
-            top: 1.4rem;
-            right: 1.6rem;
-            font-size: 1rem;
-            color: var(--accent);
-            opacity: 0;
-            transform: translateX(-6px);
-            transition: opacity .3s, transform .3s;
-        }
-        .gallery-card:hover .gc-arrow { opacity: 1; transform: translateX(0); }
-
-        /* ── Page vide ── */
-        .home-empty {
-            text-align: center;
-            padding: 6rem 2rem;
-            color: var(--text-muted);
-        }
-        .home-empty p { font-size: .8rem; letter-spacing: .1em; margin-bottom: 1.5rem; }
-        .home-empty a {
-            font-size: .65rem;
-            letter-spacing: .2em;
-            text-transform: uppercase;
-            color: var(--accent);
-            text-decoration: none;
-            border: 1px solid var(--accent);
-            padding: .6rem 1.4rem;
-            border-radius: 4px;
-            transition: background .2s;
-        }
-        .home-empty a:hover { background: rgba(200,169,126,.1); }
-
-        /* ── Responsive ── */
-        @media (max-width: 700px) {
-            .galleries-grid {
-                grid-template-columns: 1fr;
-                padding: 0 1rem 4rem;
-                gap: 2px;
-            }
-            .gallery-card { aspect-ratio: 16 / 9; }
-        }
-        @media (min-width: 701px) and (max-width: 1100px) {
-            .galleries-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-    </style>
 </head>
 <body>
 
@@ -302,13 +90,15 @@ $home_desc    = $SETTINGS['home_description'] ?? 'Illustrations Pixiv par person
             Dépôt Git
         </a>
         <span class="footer-sep"></span>
-        <a class="footer-link" href="https://esenjin.xyz/blog/mes-waifus/" target="_blank" rel="noopener">
+        <?php if ($home_fl_label !== '' && $home_fl_url !== ''): ?>
+        <a class="footer-link" href="<?= htmlspecialchars($home_fl_url) ?>" target="_blank" rel="noopener">
             <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
             </svg>
-            Article
+            <?= htmlspecialchars($home_fl_label) ?>
         </a>
         <span class="footer-sep"></span>
+        <?php endif; ?>
     </div>
 </footer>
 
