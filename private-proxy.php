@@ -51,9 +51,10 @@ $url = '';
 switch ($type) {
 
     // ── Galerie privée par tag ───────────────────────────────
-    case 'tag':
+case 'tag':
         $tag     = trim($_GET['tag']     ?? '');
         $gallery = trim($_GET['gallery'] ?? '');
+        $period  = trim($_GET['period']  ?? '');
 
         if ($tag === '') {
             http_response_code(400);
@@ -61,7 +62,6 @@ switch ($type) {
             exit;
         }
 
-        // Vérifier que le tag appartient bien à une galerie privée
         $allowed = [];
         if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
             $gfile = PRIVATE_DIR . '/' . $gallery . '.json';
@@ -76,9 +76,7 @@ switch ($type) {
             foreach (glob(PRIVATE_DIR . '/*.json') ?: [] as $f) {
                 $d = json_decode(file_get_contents($f), true);
                 if (!is_array($d) || ($d['type'] ?? 'tag') !== 'tag') continue;
-                foreach (($d['characters'] ?? []) as $c) {
-                    $allowed[] = $c['tag'];
-                }
+                foreach (($d['characters'] ?? []) as $c) $allowed[] = $c['tag'];
             }
         }
         if (!in_array($tag, $allowed, true)) {
@@ -87,15 +85,34 @@ switch ($type) {
             exit;
         }
 
-        // Galeries privées : mode=all (safe + R18), pas de filtre IA
-        $params = http_build_query([
-            'word'    => $tag,
-            'order'   => $order,
-            'mode'    => 'all',
-            'p'       => $page,
-            's_mode'  => 's_tag',
-            'lang'    => 'en',
-        ], '', '&', PHP_QUERY_RFC3986);
+        // Date de début selon la période
+        $scd = '';
+        if ($order === 'popular_d' && $period !== '') {
+            $periodMap = [
+                'year'   => '-1 year',
+                '6month' => '-6 months',
+                'month'  => '-1 month',
+                'week'   => '-7 days',
+                'day'    => '-1 day',
+            ];
+            if (isset($periodMap[$period])) {
+                $scd = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+                    ->modify($periodMap[$period])
+                    ->format('Y-m-d');
+            }
+        }
+
+        $params_arr = [
+            'word'   => $tag,
+            'order'  => $order,
+            'mode'   => 'all',
+            'p'      => $page,
+            's_mode' => 's_tag',
+            'lang'   => 'en',
+        ];
+        if ($scd !== '') $params_arr['scd'] = $scd;
+
+        $params = http_build_query($params_arr, '', '&', PHP_QUERY_RFC3986);
         $url = 'https://www.pixiv.net/ajax/search/artworks/' . rawurlencode($tag) . '?' . $params;
         break;
 

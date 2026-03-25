@@ -522,6 +522,17 @@ h1 {
     transform: translateY(0);
 }
 
+/* ── Période (scroll horizontal si trop large) ── */
+.period-picker-group .control-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    max-width: min(100vw - 4rem, 480px);
+    padding-bottom: 2px; /* évite le clipping */
+}
+.period-picker-group .control-pills::-webkit-scrollbar { display: none; }
+
 /* ── Responsive contrôles ── */
 @media (max-width: 600px) {
     .controls-bar {
