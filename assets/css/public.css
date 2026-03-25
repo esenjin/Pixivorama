@@ -48,6 +48,7 @@
     opacity: 0;
     transform: translateY(18px);
     animation: fadeUp .55s forwards;
+    margin: 2px;
 }
 .gallery-card:nth-child(1) { animation-delay: .05s; }
 .gallery-card:nth-child(2) { animation-delay: .12s; }
