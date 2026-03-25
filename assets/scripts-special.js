@@ -7,11 +7,27 @@ const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
 const HAS_ORDER    = window.PIXIV_HAS_ORDER   !== false;
 const HAS_PERPAGE  = window.PIXIV_HAS_PERPAGE !== false;
 
+// Détecte si on est sur une galerie "following" pour activer le suivi des nouveautés
+const IS_FOLLOWING = EXTRA_PARAMS.includes('type=following');
+
+// Clé localStorage propre à cette galerie (slug déduit de l'URL)
+const GALLERY_SLUG   = location.pathname.split('/').pop().replace('.php', '');
+const SEEN_STORE_KEY = `pixiv_seen_${GALLERY_SLUG}`;
+
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
 let currentPeriod  = '';
 let loading        = false;
+
+// IDs déjà vus, chargés depuis localStorage — structure : { id: timestampSeconds }
+// Les entrées de plus de SEEN_TTL_DAYS jours sont purgées automatiquement au chargement.
+const SEEN_TTL_DAYS = 90;
+
+let seenMap = loadSeenMap();       // Map<id, timestamp>
+let seenIds = new Set(seenMap.keys()); // Set rapide pour les lookups
+// IDs de la session courante (pour le bouton "marquer comme vues")
+let newIdsThisLoad = new Set();
 
 const gallery    = document.getElementById('gallery');
 const statusBar  = document.getElementById('statusBar');
@@ -19,6 +35,84 @@ const pagination = document.getElementById('pagination');
 const btnToTop   = document.getElementById('btnToTop');
 const tooltip    = document.getElementById('imgTooltip');
 
+// ── Gestion localStorage des IDs vus ──
+
+/**
+ * Charge le Map depuis localStorage et purge les entrées expirées.
+ * Retourne un Map<string, number> (id → timestamp Unix en secondes).
+ */
+function loadSeenMap() {
+    const cutoff = Math.floor(Date.now() / 1000) - SEEN_TTL_DAYS * 86400;
+    try {
+        const raw = localStorage.getItem(SEEN_STORE_KEY);
+        if (!raw) return new Map();
+
+        const parsed = JSON.parse(raw);
+
+        // Compatibilité avec l'ancien format (tableau simple d'IDs sans timestamp)
+        if (Array.isArray(parsed)) {
+            // Migration : on leur attribue "maintenant" pour ne pas les expirer aussitôt
+            const now = Math.floor(Date.now() / 1000);
+            return new Map(parsed.map(id => [String(id), now]));
+        }
+
+        // Format normal : objet { id: timestamp }
+        const map = new Map();
+        for (const [id, ts] of Object.entries(parsed)) {
+            if (ts >= cutoff) map.set(id, ts); // entrées expirées silencieusement écartées
+        }
+        return map;
+    } catch { return new Map(); }
+}
+
+function saveSeenMap() {
+    try {
+        const obj = Object.fromEntries(seenMap);
+        localStorage.setItem(SEEN_STORE_KEY, JSON.stringify(obj));
+    } catch {}
+}
+
+function markAllSeen() {
+    const now = Math.floor(Date.now() / 1000);
+    newIdsThisLoad.forEach(id => {
+        seenMap.set(id, now);
+        seenIds.add(id);
+    });
+    saveSeenMap();
+    newIdsThisLoad.clear();
+    // Retirer visuellement les badges new
+    gallery.querySelectorAll('.card.is-new').forEach(card => {
+        card.classList.remove('is-new');
+        card.querySelector('.badge-new')?.remove();
+    });
+    updateNewBanner(0);
+}
+
+// ── Bannière "X nouveautés — Marquer comme vues" ──
+function updateNewBanner(count) {
+    let banner = document.getElementById('newBanner');
+    if (count === 0) {
+        banner?.remove();
+        return;
+    }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'newBanner';
+        banner.className = 'new-banner';
+        // Insérer juste avant la galerie
+        gallery.parentNode.insertBefore(banner, gallery);
+    }
+    banner.innerHTML = `
+        <span class="new-banner-count">
+            <span class="new-banner-dot"></span>
+            ${count} nouvelle${count > 1 ? 's' : ''} illustration${count > 1 ? 's' : ''}
+        </span>
+        <button class="new-banner-btn" id="markSeenBtn">Marquer comme vues</button>
+    `;
+    document.getElementById('markSeenBtn').addEventListener('click', markAllSeen);
+}
+
+// ── Squelettes de chargement ──
 function showSkeletons(n = 12) {
     gallery.innerHTML = Array.from({length: n}, () => `
         <div class="skeleton">
@@ -28,6 +122,7 @@ function showSkeletons(n = 12) {
     `).join('');
 }
 
+// ── Chargement principal ──
 async function load(page) {
     if (loading) return;
     loading = true;
@@ -46,6 +141,9 @@ async function load(page) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
+        // Sur la 1ère page, réinitialiser les nouveautés de cette session
+        if (page === 1) newIdsThisLoad = new Set();
+
         render(data.works);
         updateStatus(data.total, page, data.perPage);
         updatePagination(page, data.total, data.perPage);
@@ -55,38 +153,57 @@ async function load(page) {
                 <strong>Erreur</strong>${escHtml(err.message)}
             </div>`;
         statusBar.textContent = '—';
+        document.getElementById('newBanner')?.remove();
     } finally {
         loading = false;
     }
 }
 
+// ── Rendu des cartes ──
 function render(works) {
     if (!works || !works.length) {
         gallery.innerHTML = `<div class="error-msg" style="grid-column:1/-1">Aucune illustration trouvée.</div>`;
+        if (IS_FOLLOWING) updateNewBanner(0);
         return;
     }
+
     gallery.innerHTML = works.map((w, i) => {
         const pixivUrl = `https://www.pixiv.net/en/artworks/${w.id}`;
         const delay    = (i % 24) * 25;
         const pages    = w.pageCount > 1 ? `<span class="badge-pages">${w.pageCount}</span>` : '';
         const thumbUrl = w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re');
+
+        // Détection nouveauté (uniquement pour following)
+        const isNew = IS_FOLLOWING && !seenIds.has(w.id);
+        if (isNew) newIdsThisLoad.add(w.id);
+
+        const newBadge = isNew ? `<span class="badge-new">Nouveau</span>` : '';
+        const newClass = isNew ? ' is-new' : '';
+
         return `
-        <a class="card" href="${pixivUrl}" target="_blank" rel="noopener"
+        <a class="card${newClass}" href="${pixivUrl}" target="_blank" rel="noopener"
            style="animation-delay:${delay}ms"
+           data-id="${escHtml(w.id)}"
            data-title="${escHtml(w.title)}"
            data-artist="${escHtml(w.userName)}">
             <div class="thumb-wrap">
                 <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy">
                 ${pages}
+                ${newBadge}
             </div>
             <div class="card-info">
                 <div class="card-artist">${escHtml(w.userName)}</div>
             </div>
         </a>`;
     }).join('');
+
+    // Mettre à jour la bannière avec le nombre de nouvelles illustrations
+    if (IS_FOLLOWING) updateNewBanner(newIdsThisLoad.size);
+
     attachTooltips();
 }
 
+// ── Tooltip titre ──
 function attachTooltips() {
     gallery.querySelectorAll('.card').forEach(card => {
         card.addEventListener('mouseenter', e => {
@@ -107,6 +224,7 @@ function positionTooltip(e) {
     tooltip.style.top  = y + 'px';
 }
 
+// ── Status bar ──
 function updateStatus(total, page, perPage) {
     const pp = perPage || currentPerPage;
     const totalPages = Math.ceil(total / pp);
@@ -114,6 +232,7 @@ function updateStatus(total, page, perPage) {
     statusBar.textContent = `${total.toLocaleString('fr-FR')} illustration${total > 1 ? 's' : ''} — page ${page} / ${totalPages}`;
 }
 
+// ── Pagination ──
 function updatePagination(page, total, perPage) {
     const pp = perPage || currentPerPage;
     const totalPages = Math.ceil(total / pp);
@@ -159,6 +278,7 @@ function buildPaginationHTML(page, totalPages) {
     return parts.join('');
 }
 
+// ── Helpers ──
 function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

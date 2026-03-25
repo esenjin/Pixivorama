@@ -543,3 +543,112 @@ h1 {
         gap: .5rem;
     }
 }
+
+/* ── Contour "nouvelle illustration" sur la carte ── */
+.card.is-new {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(200, 169, 126, .18);
+}
+.card.is-new:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 28px rgba(200, 169, 126, .28);
+}
+ 
+/* ── Badge "Nouveau" sur le coin supérieur gauche de la vignette ── */
+.badge-new {
+    position: absolute;
+    top: 7px;
+    left: 7px;
+    background: var(--accent);
+    color: #0d0d0f;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .52rem;
+    font-weight: 400;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 2px;
+    line-height: 1.4;
+    pointer-events: none;
+    z-index: 2;
+    /* Animation d'apparition légère */
+    animation: badgePop .3s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+ 
+@keyframes badgePop {
+    from { opacity: 0; transform: scale(.7) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+ 
+/* ── Bannière compteur + bouton "Marquer comme vues" ── */
+.new-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: .75rem 2rem;
+    background: rgba(200, 169, 126, .06);
+    border-top: 1px solid rgba(200, 169, 126, .2);
+    border-bottom: 1px solid rgba(200, 169, 126, .2);
+    animation: fadeUp .3s ease both;
+}
+ 
+.new-banner-count {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    font-weight: 400;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+ 
+.new-banner-dot {
+    width: .45rem;
+    height: .45rem;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(200, 169, 126, .7);
+    flex-shrink: 0;
+    /* Pulse discret */
+    animation: dotPulse 2s ease-in-out infinite;
+}
+ 
+@keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(200, 169, 126, .5); }
+    50%       { box-shadow: 0 0 10px rgba(200, 169, 126, .9); }
+}
+ 
+.new-banner-btn {
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .62rem;
+    font-weight: 400;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    padding: .45rem 1.1rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: border-color .2s, color .2s, background .2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.new-banner-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200, 169, 126, .07);
+}
+ 
+/* Responsive */
+@media (max-width: 600px) {
+    .new-banner {
+        padding: .65rem 1rem;
+        justify-content: center;
+        text-align: center;
+    }
+}
