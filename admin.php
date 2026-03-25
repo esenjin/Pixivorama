@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tab   = 'galleries';
 
         if (!is_valid_gallery_slug($slug)) {
-            $error = 'Slug invalide : uniquement a-z, 0-9 et tirets, 12 caractères max.';
+            $error = 'Slug invalide : uniquement a-z, 0-9 et tirets, 20 caractères max.';
         } elseif ($title === '') {
             $error = 'Le titre ne peut pas être vide.';
         } elseif (file_exists(gallery_file($slug))) {
@@ -290,6 +290,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         </div>
         <div style="display:flex;gap:1.5rem;align-items:center;">
             <a href="index.php">← Accueil</a>
+            <a href="perso.php">Espace perso</a>
             <a href="admin.php?logout=1">Déconnexion</a>
         </div>
     </div>
@@ -448,11 +449,11 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <div class="field" style="margin-bottom:0;">
                     <label for="new_slug">Slug (nom du fichier)</label>
                     <input type="text" id="new_slug" name="gallery_slug"
-                           placeholder="ex: monogatari" maxlength="12"
-                           pattern="[a-z0-9\-]{1,12}"
-                           title="a-z, 0-9 et tirets uniquement, 12 caractères max"
+                           placeholder="ex: monogatari" maxlength="20"
+                           pattern="[a-z0-9\-]{1,20}"
+                           title="a-z, 0-9 et tirets uniquement, 20 caractères max"
                            required>
-                    <span class="hint">a-z, 0-9, tirets · 12 car. max · sera galleries/<em id="slugPreview">slug</em>.php</span>
+                    <span class="hint">a-z, 0-9, tirets · 20 car. max · sera galleries/<em id="slugPreview">slug</em>.php</span>
                 </div>
                 <div class="field" style="margin-bottom:0;">
                     <label for="new_title">Titre de la galerie</label>

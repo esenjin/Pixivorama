@@ -1,0 +1,110 @@
+/* ============================================================
+   Pixivorama — CSS ESPACE PERSO
+   À ajouter dans assets/css/ et importer dans styles.css
+   ============================================================ */
+
+/* ── Grille des types spéciaux (quand aucun n'est encore créé) ── */
+.special-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.special-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .35rem;
+    padding: 1.2rem 1.3rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color .2s;
+}
+.special-type-card:hover {
+    border-color: var(--accent-dim);
+}
+.special-type-icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    margin-bottom: .15rem;
+    line-height: 1;
+}
+.special-type-label {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .72rem;
+    font-weight: 400;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+.special-type-hint {
+    font-size: .6rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+    line-height: 1.4;
+}
+
+/* ── Badge icône galerie spéciale ── */
+.special-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    background: rgba(200,169,126,.08);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: .9rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+/* ── Details / Summary (création galerie par tag) ── */
+.create-details {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.create-details[open] {
+    border-color: var(--accent-dim);
+    border-style: solid;
+}
+.create-summary {
+    list-style: none;
+    padding: .85rem 1.2rem;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .68rem;
+    font-weight: 400;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .2s, background .2s;
+    user-select: none;
+}
+.create-summary::-webkit-details-marker { display: none; }
+.create-summary:hover {
+    color: var(--text);
+    background: rgba(255,255,255,.02);
+}
+.create-details[open] .create-summary {
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+}
+.create-details form {
+    padding: 1.2rem 1.2rem 1.4rem;
+}
+
+/* ── Modale création spéciale ── */
+#specialModal .cmodal-msg {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .7rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .8rem;
+}

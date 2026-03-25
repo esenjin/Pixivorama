@@ -9,3 +9,11 @@
     Order allow,deny
     Deny from all
 </FilesMatch>
+
+# Protège le dossier private/ (accès direct bloqué sauf via PHP authentifié)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloque l'accès direct aux .php dans private/ si pas de session admin
+    # (la vérification de session est gérée par PHP lui-même)
+</IfModule>

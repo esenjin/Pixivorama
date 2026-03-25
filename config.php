@@ -31,10 +31,10 @@ define('PIXIV_PHPSESSID', $SETTINGS['phpsessid']);
 // ── Galeries ────────────────────────────────────────────────
 
 /**
- * Valide un slug de galerie : a-z, 0-9, tirets, max 12 caractères.
+ * Valide un slug de galerie : a-z, 0-9, tirets, max 20 caractères.
  */
 function is_valid_gallery_slug(string $slug): bool {
-    return (bool) preg_match('/^[a-z0-9\-]{1,12}$/', $slug);
+    return (bool) preg_match('/^[a-z0-9\-]{1,20}$/', $slug);
 }
 
 /**

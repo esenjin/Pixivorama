@@ -1,17 +1,17 @@
 /* ============================================================
-   scripts.js — Galerie Pixiv
+   scripts-special.js — Galeries spéciales Pixiv (sans tags)
+   Utilisé par les galeries privées de type :
+     illust | bookmark | history | following
    ============================================================ */
 
-// PIXIV_PROXY_URL peut être défini par la page hôte (ex : '../pixiv-proxy.php')
-const PROXY_URL    = window.PIXIV_PROXY_URL    || 'pixiv-proxy.php';
+const PROXY_URL  = window.PIXIV_PROXY_URL    || 'private-proxy.php';
 const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
+const HAS_ORDER   = window.PIXIV_HAS_ORDER   !== false;
+const HAS_PERPAGE = window.PIXIV_HAS_PERPAGE !== false;
 
-let currentTag     = window.PIXIV_INITIAL_TAG;
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
-let currentMode    = 'safe';
-let totalWorks     = 0;
 let loading        = false;
 
 const gallery    = document.getElementById('gallery');
@@ -31,7 +31,7 @@ function showSkeletons(n = 12) {
 }
 
 // ── Chargement principal ──
-async function load(tag, page) {
+async function load(page) {
     if (loading) return;
     loading = true;
     pagination.style.display = 'none';
@@ -39,16 +39,16 @@ async function load(tag, page) {
     showSkeletons(currentPerPage > 56 ? 24 : 12);
 
     try {
-        const sep  = EXTRA_PARAMS ? '&' : '';
-        const base = PROXY_URL + (EXTRA_PARAMS ? '?' + EXTRA_PARAMS : '');
-        const url  = `${base}${sep || '?'}tag=${encodeURIComponent(tag)}&page=${page}`
-            + `&per_page=${currentPerPage}&order=${currentOrder}&mode=${currentMode}`;
+        // Construire l'URL avec EXTRA_PARAMS comme base de query string
+        const base = PROXY_URL + (EXTRA_PARAMS ? '?' + EXTRA_PARAMS + '&' : '?');
+        let url = `${base}page=${page}&per_page=${currentPerPage}`;
+        if (HAS_ORDER) url += `&order=${currentOrder}`;
+
         const res  = await fetch(url);
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
 
-        totalWorks = data.total;
         render(data.works);
         updateStatus(data.total, page, data.perPage);
         updatePagination(page, data.total, data.perPage);
@@ -65,7 +65,7 @@ async function load(tag, page) {
 
 // ── Rendu des cartes ──
 function render(works) {
-    if (!works.length) {
+    if (!works || !works.length) {
         gallery.innerHTML = `<div class="error-msg" style="grid-column:1/-1">Aucune illustration trouvée.</div>`;
         return;
     }
@@ -123,6 +123,10 @@ function positionTooltip(e) {
 function updateStatus(total, page, perPage) {
     const pp         = perPage || currentPerPage;
     const totalPages = Math.ceil(total / pp);
+    if (!total) {
+        statusBar.textContent = 'Aucune illustration.';
+        return;
+    }
     statusBar.textContent = `${total.toLocaleString('fr-FR')} illustration${total > 1 ? 's' : ''} — page ${page} / ${totalPages}`;
 }
 
@@ -140,7 +144,7 @@ function updatePagination(page, total, perPage) {
             const p = parseInt(btn.dataset.page, 10);
             if (!isNaN(p) && p !== currentPage) {
                 currentPage = p;
-                load(currentTag, currentPage);
+                load(currentPage);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
@@ -189,7 +193,7 @@ function escHtml(str) {
 
 function resetPage() {
     currentPage = 1;
-    load(currentTag, currentPage);
+    load(currentPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -199,26 +203,21 @@ if (orderPickerEl) {
     orderPickerEl.addEventListener('click', e => {
         const btn = e.target.closest('.pill');
         if (!btn || btn.classList.contains('active')) return;
-        document.querySelectorAll('#orderPicker .pill').forEach(b => b.classList.remove('active'));
+        orderPickerEl.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentOrder = btn.dataset.value;
         resetPage();
     });
 }
 
-document.getElementById('perPagePicker').addEventListener('click', e => {
-    const btn = e.target.closest('.pill');
-    if (!btn || btn.classList.contains('active')) return;
-    document.querySelectorAll('#perPagePicker .pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentPerPage = parseInt(btn.dataset.value, 10);
-    resetPage();
-});
-
-const r18El = document.getElementById('r18Toggle');
-if (r18El) {
-    r18El.addEventListener('change', e => {
-        currentMode = e.target.checked ? 'r18' : 'safe';
+const perPagePickerEl = document.getElementById('perPagePicker');
+if (perPagePickerEl) {
+    perPagePickerEl.addEventListener('click', e => {
+        const btn = e.target.closest('.pill');
+        if (!btn || btn.classList.contains('active')) return;
+        perPagePickerEl.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentPerPage = parseInt(btn.dataset.value, 10);
         resetPage();
     });
 }
@@ -229,18 +228,5 @@ window.addEventListener('scroll', () => {
 
 btnToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-const charSelectorEl = document.getElementById('charSelector');
-if (charSelectorEl) {
-    charSelectorEl.addEventListener('click', e => {
-        const btn = e.target.closest('.char-btn');
-        if (!btn) return;
-        document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentTag  = btn.dataset.tag;
-        currentPage = 1;
-        load(currentTag, currentPage);
-    });
-}
-
 // ── Init ──
-load(currentTag, currentPage);
+load(currentPage);
