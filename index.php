@@ -5,6 +5,17 @@
 require_once __DIR__ . '/config.php';
 
 $galleries    = list_galleries();
+
+// Appliquer l'ordre personnalisé défini dans l'administration
+if (!empty($SETTINGS['gallery_order']) && is_array($SETTINGS['gallery_order'])) {
+    $orderMap = array_flip($SETTINGS['gallery_order']);
+    usort($galleries, function($a, $b) use ($orderMap) {
+        $ia = $orderMap[$a['slug']] ?? PHP_INT_MAX;
+        $ib = $orderMap[$b['slug']] ?? PHP_INT_MAX;
+        return $ia <=> $ib;
+    });
+}
+
 $home_title   = $SETTINGS['home_title']            ?? 'Galeries';
 $home_desc    = $SETTINGS['home_description']      ?? 'Illustrations Pixiv par personnage';
 $home_fl_label = $SETTINGS['home_footer_link_label'] ?? '';
