@@ -6,13 +6,14 @@ require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$tag      = trim($_GET['tag']      ?? '');
-$page     = max(1, intval($_GET['page']     ?? 1));
-$per_page = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
-$order    = $_GET['order']  ?? PIXIV_DEFAULT_ORDER;
-$mode     = $_GET['mode']   ?? PIXIV_DEFAULT_MODE;
-$gallery  = trim($_GET['gallery'] ?? '');
-$period   = trim($_GET['period']  ?? '');
+$tag        = trim($_GET['tag']         ?? '');
+$page       = max(1, intval($_GET['page']     ?? 1));
+$per_page   = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
+$order      = $_GET['order']   ?? PIXIV_DEFAULT_ORDER;
+$mode       = $_GET['mode']    ?? PIXIV_DEFAULT_MODE;
+$gallery    = trim($_GET['gallery']    ?? '');
+$period     = trim($_GET['period']     ?? '');
+$free_search = !empty($_GET['free_search']); // true si appelé depuis recherche.php
 
 if (!in_array($per_page, [28, 56, 112], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
@@ -25,20 +26,23 @@ if ($tag === '') {
 }
 
 // Vérifie que le tag appartient à une galerie autorisée
-$allowed_tags = [];
-if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
-    $gdata = load_gallery($gallery);
-    if ($gdata) $allowed_tags = array_column($gdata['characters'], 'tag');
-}
-if (empty($allowed_tags)) {
-    foreach (list_galleries() as $g) {
-        foreach ($g['characters'] as $char) $allowed_tags[] = $char['tag'];
+// — en mode recherche libre, toute valeur est acceptée.
+if (!$free_search) {
+    $allowed_tags = [];
+    if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
+        $gdata = load_gallery($gallery);
+        if ($gdata) $allowed_tags = array_column($gdata['characters'], 'tag');
     }
-}
-if (!in_array($tag, $allowed_tags, true)) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Tag non autorisé.']);
-    exit;
+    if (empty($allowed_tags)) {
+        foreach (list_galleries() as $g) {
+            foreach ($g['characters'] as $char) $allowed_tags[] = $char['tag'];
+        }
+    }
+    if (!in_array($tag, $allowed_tags, true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Tag non autorisé.']);
+        exit;
+    }
 }
 
 // ── Date de début selon la période (scd) ──

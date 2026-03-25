@@ -101,6 +101,13 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
             Dépôt Git
         </a>
         <span class="footer-sep"></span>
+        <a class="footer-link" href="galleries/recherche.php">
+            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Recherche libre
+        </a>
+        <span class="footer-sep"></span>
         <?php if ($home_fl_label !== '' && $home_fl_url !== ''): ?>
         <a class="footer-link" href="<?= htmlspecialchars($home_fl_url) ?>" target="_blank" rel="noopener">
             <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
