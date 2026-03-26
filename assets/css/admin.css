@@ -500,6 +500,19 @@
     .admin-tab  { padding: .65rem .9rem; font-size: .6rem; }
 }
 
+/* Responsive header admin */
+@media (max-width: 560px) {
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .admin-header > div:last-child {
+        flex-wrap: wrap;
+        gap: .75rem 1rem;
+    }
+}
+
 /* ── Modale custom ── */
 .cmodal-backdrop {
     position: fixed;

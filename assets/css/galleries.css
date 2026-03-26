@@ -336,9 +336,11 @@ h1 {
     text-align: center;
 }
 .footer-inner {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
-    gap: 1.2rem;
+    gap: .8rem 1.2rem;
 }
 .footer-sep {
     display: block;
