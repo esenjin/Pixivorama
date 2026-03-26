@@ -8,6 +8,8 @@
 define('SETTINGS_FILE',  __DIR__ . '/settings.json');
 define('GALLERIES_DIR',  __DIR__ . '/galleries');
 
+define('APP_VERSION', '1.2.2');
+
 // ── Réglages globaux ────────────────────────────────────────
 
 function load_settings(): array {
