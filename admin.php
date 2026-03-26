@@ -4,6 +4,16 @@
 // ============================================================
 require_once __DIR__ . '/config.php';
 
+// ── Session longue durée (7 jours) ──
+$session_lifetime = 7 * 24 * 3600; // 604 800 s
+ini_set('session.gc_maxlifetime', $session_lifetime);
+session_set_cookie_params([
+    'lifetime' => $session_lifetime,
+    'path'     => '/',
+    'secure'   => isset($_SERVER['HTTPS']),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 
 $error   = '';
