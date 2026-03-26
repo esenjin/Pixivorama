@@ -121,8 +121,12 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
 </footer>
 
 <script>
-/* ── Chargement des aperçus pour chaque galerie ── */
+/* ── Chargement des aperçus + carousel dynamique ── */
 (async function loadPreviews() {
+    const INTERVAL   = 4000;
+    const MAX_TAGS   = 6;
+    const IMGS_PER_TAG = 2; // → 12 images max au total
+
     const cards = document.querySelectorAll('.gallery-card[data-slug]');
 
     for (const card of cards) {
@@ -131,50 +135,100 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
         try { tags = JSON.parse(card.dataset.tags); } catch { continue; }
         if (!tags.length) continue;
 
-        // Choisir jusqu'à 3 tags au hasard parmi la liste
-        const shuffled = [...tags].sort(() => Math.random() - .5);
-        const chosen   = shuffled.slice(0, Math.min(3, shuffled.length));
+        // Sélectionner au plus MAX_TAGS tags au hasard
+        const chosen = [...tags].sort(() => Math.random() - .5).slice(0, MAX_TAGS);
 
-        // Récupérer quelques images par tag
-        const thumbs = [];
-        for (const tag of chosen) {
-            if (thumbs.length >= 6) break;
+        // Charger tous les tags EN PARALLÈLE
+        const results = await Promise.all(chosen.map(async tag => {
             try {
                 const res  = await fetch(`pixiv-proxy.php?tag=${encodeURIComponent(tag)}&page=1&per_page=28&order=popular_d&mode=safe&gallery=${encodeURIComponent(slug)}`);
                 const data = await res.json();
-                if (data.works) {
-                    // Prendre 2 images au hasard dans les 10 premières
-                    const pool = data.works.slice(0, 10).sort(() => Math.random() - .5);
-                    for (const w of pool.slice(0, 2)) {
-                        if (thumbs.length < 6) {
-                            thumbs.push(w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re'));
-                        }
-                    }
+                if (!data.works?.length) return [];
+                return data.works
+                    .sort(() => Math.random() - .5)
+                    .slice(0, IMGS_PER_TAG)
+                    .map(w => w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re'));
+            } catch { return []; }
+        }));
+
+        // Round-robin inter-tags pour construire le pool final
+        const pool = [];
+        const seen = new Set();
+        const maxLen = Math.max(...results.map(r => r.length));
+        for (let i = 0; i < maxLen; i++) {
+            for (const urls of results) {
+                if (i < urls.length && !seen.has(urls[i])) {
+                    seen.add(urls[i]);
+                    pool.push(urls[i]);
                 }
-            } catch {}
+            }
         }
 
-        // Remplir la mosaïque
-        const mosaic  = document.getElementById('mosaic-' + slug);
+        if (pool.length < 6) continue;
+
+        // Pré-charger
+        pool.forEach(url => { const img = new Image(); img.src = url; });
+
+        const mosaic = document.getElementById('mosaic-' + slug);
         if (!mosaic) continue;
 
-        const cells = mosaic.querySelectorAll('.gc-mosaic-placeholder');
-        thumbs.forEach((url, i) => {
-            if (i >= cells.length) return;
-            const img      = document.createElement('img');
-            img.className  = 'gc-mosaic-img';
-            img.src        = url;
-            img.alt        = '';
-            img.loading    = 'lazy';
-            img.addEventListener('load', () => {
-                cells[i].replaceWith(img);
+        mosaic.innerHTML = '';
+        const cells   = [];
+        const visible = new Set();
+
+        for (let i = 0; i < 6; i++) {
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:relative;overflow:hidden;width:100%;height:100%;';
+
+            const imgA = document.createElement('img');
+            const imgB = document.createElement('img');
+            [imgA, imgB].forEach(img => {
+                img.className = 'gc-mosaic-img';
+                img.alt       = '';
+                img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.8);transition:opacity .9s ease;';
             });
-            img.addEventListener('error', () => { /* garde le placeholder */ });
-            // Déclenche la tentative
-            const tmp = new Image();
-            tmp.src = url;
-            tmp.onload  = () => { cells[i].replaceWith(img); };
-        });
+            imgA.style.opacity = '1';
+            imgB.style.opacity = '0';
+
+            const url = pool[i];
+            imgA.src  = url;
+            visible.add(url);
+
+            wrapper.appendChild(imgA);
+            wrapper.appendChild(imgB);
+            mosaic.appendChild(wrapper);
+            cells.push({ imgA, imgB, front: 'A', current: url });
+        }
+
+        // Carousel
+        setTimeout(() => {
+            setInterval(() => {
+                const cell      = cells[Math.floor(Math.random() * cells.length)];
+                const available = pool.filter(url => !visible.has(url));
+                if (!available.length) return;
+
+                const nextUrl = available[Math.floor(Math.random() * available.length)];
+                visible.delete(cell.current);
+                visible.add(nextUrl);
+                cell.current = nextUrl;
+
+                if (cell.front === 'A') {
+                    cell.imgB.src = nextUrl;
+                    cell.imgB.onload = () => {
+                        cell.imgA.style.opacity = '0';
+                        cell.imgB.style.opacity = '1';
+                        cell.front = 'B';
+                    };
+                } else {
+                    cell.imgA.src = nextUrl;
+                    cell.imgA.onload = () => {
+                        cell.imgB.style.opacity = '0';
+                        cell.imgA.style.opacity = '1';
+                        cell.front = 'A';
+                    };
+                }
+            }, INTERVAL);
+        }, Math.random() * INTERVAL);
     }
 })();
 </script>
