@@ -1,0 +1,151 @@
+/* ============================================================
+   Pixivorama — CSS PAGES D'ERREUR
+   ============================================================ */
+
+.error-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+/* ── Code d'erreur ── */
+.error-code {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(5rem, 18vw, 10rem);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--accent-dim);
+    letter-spacing: -.02em;
+    margin-bottom: .5rem;
+    opacity: .55;
+    animation: fadeUp .6s .1s both;
+}
+
+/* ── Titre ── */
+.error-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 1rem;
+    animation: fadeUp .6s .2s both;
+}
+
+/* ── Description ── */
+.error-desc {
+    font-size: .72rem;
+    font-weight: 300;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    line-height: 1.8;
+    max-width: 380px;
+    margin: 0 auto 2.5rem;
+    animation: fadeUp .6s .3s both;
+}
+
+/* ── Séparateur ── */
+.error-sep {
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+    margin: 1.2rem auto 1.5rem;
+    opacity: .5;
+    animation: fadeUp .6s .25s both;
+}
+
+/* ── Actions ── */
+.error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: center;
+    animation: fadeUp .6s .4s both;
+}
+
+.error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .65rem;
+    font-weight: 400;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: .65rem 1.5rem;
+    border-radius: var(--radius);
+    transition: background .2s, border-color .2s, color .2s;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.error-btn-primary {
+    background: rgba(200, 169, 126, .1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+.error-btn-primary:hover { background: rgba(200, 169, 126, .18); }
+
+.error-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+.error-btn-secondary:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+
+/* ── Détails techniques (masqués par défaut) ── */
+.error-detail {
+    margin-top: 2.5rem;
+    animation: fadeUp .6s .5s both;
+}
+
+.error-detail-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .6rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: .5;
+    transition: opacity .2s;
+    padding: 0;
+}
+.error-detail-toggle:hover { opacity: 1; }
+
+.error-detail-box {
+    display: none;
+    margin-top: .8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .8rem 1.1rem;
+    font-size: .68rem;
+    font-family: monospace;
+    color: var(--text-muted);
+    letter-spacing: .04em;
+    line-height: 1.6;
+    text-align: left;
+    max-width: 480px;
+    word-break: break-all;
+}
+.error-detail-box.visible { display: block; }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .error-code { font-size: clamp(4rem, 22vw, 7rem); }
+    .error-actions { flex-direction: column; align-items: center; }
+    .error-btn { width: 100%; max-width: 280px; justify-content: center; }
+}

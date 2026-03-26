@@ -1,19 +1,63 @@
-# Protège config.php, settings.json et tous les fichiers JSON de galeries
+# ============================================================
+#  .htaccess — Pixivorama
+# ============================================================
+
+# ── Protections fichiers sensibles ──────────────────────────
+
+# Protège config.php et settings.json
 <FilesMatch "^(config\.php|settings\.json)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Protège les fichiers JSON dans galleries/
+# Protège tous les fichiers JSON (galleries/ et private/)
 <FilesMatch "\.json$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Protège le dossier private/ (accès direct bloqué sauf via PHP authentifié)
+# Protège le template interne des pages d'erreur
+<FilesMatch "^_base\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ── Réécriture et gestion des erreurs ───────────────────────
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Bloque l'accès direct aux .php dans private/ si pas de session admin
-    # (la vérification de session est gérée par PHP lui-même)
+    # Nécessaire si le projet est dans un sous-dossier.
+    # Apache détecte automatiquement le bon RewriteBase via %{REQUEST_URI},
+    # mais on le rend explicite pour éviter tout ambiguïté.
+    # Laisser '/' si le projet est à la racine du domaine.
+    # Changer en '/pixivorama/' si installé dans un sous-dossier.
+    # Pour une détection automatique, la ligne est omise — Apache se débrouille
+    # tant que le .htaccess est dans le dossier racine du projet.
+    # RewriteBase /
+
+    # ── 404 : toute URL inexistante → errors/404.php ────────
+    # Conditions : le fichier n'existe pas ET le dossier n'existe pas
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Ne pas boucler sur les pages d'erreur elles-mêmes
+    RewriteCond %{REQUEST_URI} !errors/
+    # Redirection interne (pas de changement d'URL visible)
+    RewriteRule ^ errors/404.php [L,QSA]
+
 </IfModule>
+
+# ── ErrorDocument pour les erreurs générées par Apache ──────
+# (accès à un fichier protégé par FilesMatch → 403,
+#  erreur PHP fatale → 500, etc.)
+#
+# Ces chemins doivent être absolus depuis la racine web.
+# Si le projet est dans un sous-dossier, ajuster en conséquence :
+#   Ex : ErrorDocument 403 /pixivorama/errors/403.php
+#
+# Pour une compatibilité maximale sans configuration manuelle,
+# les redirections PHP (header Location) sont préférées aux
+# ErrorDocument pour les erreurs applicatives (403 privé, 503 Pixiv).
+ErrorDocument 403 /pixivorama/errors/403.php
+ErrorDocument 500 /pixivorama/errors/500.php
+ErrorDocument 503 /pixivorama/errors/503.php
