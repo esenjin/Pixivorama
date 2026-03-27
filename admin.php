@@ -4,23 +4,17 @@
 // ============================================================
 require_once __DIR__ . '/config.php';
 
-// ── Session longue durée (7 jours) ──
-$session_lifetime = 7 * 24 * 3600; // 604 800 s
-ini_set('session.gc_maxlifetime', $session_lifetime);
-session_set_cookie_params([
-    'lifetime' => $session_lifetime,
-    'path'     => '/',
-    'secure'   => isset($_SERVER['HTTPS']),
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
 session_start();
+if (!isset($_SESSION['admin_ok']) && remember_check()) {
+    $_SESSION['admin_ok'] = true;
+}
 
 $error   = '';
 $success = '';
 
 // ── Déconnexion ──
 if (isset($_GET['logout'])) {
+    remember_clear();
     session_destroy();
     header('Location: admin.php');
     exit;
@@ -32,6 +26,7 @@ if (!isset($_SESSION['admin_ok'])) {
         global $SETTINGS;
         if (password_verify($_POST['password'], $SETTINGS['admin_hash'])) {
             $_SESSION['admin_ok'] = true;
+            remember_set();
             header('Location: admin.php');
             exit;
         } else {

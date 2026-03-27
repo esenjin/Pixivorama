@@ -30,6 +30,63 @@ function save_settings(array $data): bool {
 $SETTINGS = load_settings();
 define('PIXIV_PHPSESSID', $SETTINGS['phpsessid']);
 
+// ── Remember-me token ────────────────────────────────────────
+
+define('REMEMBER_COOKIE', 'pxv_rm');
+define('REMEMBER_TTL',    7 * 24 * 3600); // 7 jours
+
+/**
+ * Génère et enregistre un token de reconnexion.
+ * Pose le cookie côté client, stocke le hash côté serveur.
+ */
+function remember_set(): void {
+    global $SETTINGS;
+    $token = bin2hex(random_bytes(32)); // 64 chars hex
+    $SETTINGS['remember_hash'] = hash('sha256', $token);
+    $SETTINGS['remember_exp']  = time() + REMEMBER_TTL;
+    save_settings($SETTINGS);
+    setcookie(REMEMBER_COOKIE, $token, [
+        'expires'  => time() + REMEMBER_TTL,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+/**
+ * Vérifie le cookie de reconnexion.
+ * Retourne true et régénère un nouveau token si valide.
+ */
+function remember_check(): bool {
+    global $SETTINGS;
+    $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    if ($token === '') return false;
+    $stored_hash = $SETTINGS['remember_hash'] ?? '';
+    $stored_exp  = $SETTINGS['remember_exp']  ?? 0;
+    if ($stored_hash === '' || time() > $stored_exp) return false;
+    if (!hash_equals($stored_hash, hash('sha256', $token))) return false;
+    // Token valide → rotation (évite le vol de token par replay)
+    remember_set();
+    return true;
+}
+
+/**
+ * Supprime le token de reconnexion (déconnexion).
+ */
+function remember_clear(): void {
+    global $SETTINGS;
+    unset($SETTINGS['remember_hash'], $SETTINGS['remember_exp']);
+    save_settings($SETTINGS);
+    setcookie(REMEMBER_COOKIE, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
 // ── Galeries ────────────────────────────────────────────────
 
 /**

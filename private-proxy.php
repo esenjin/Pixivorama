@@ -11,16 +11,9 @@
 // ============================================================
 require_once __DIR__ . '/config.php';
 
-// ── Session longue durée (7 jours) ──
-$session_lifetime = 7 * 24 * 3600;
-ini_set('session.gc_maxlifetime', $session_lifetime);
-session_set_cookie_params(['lifetime' => $session_lifetime, 'path' => '/', 'secure' => isset($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
-if (!isset($_SESSION['admin_ok'])) {
-    http_response_code(403);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['error' => 'Non autorisé.']);
-    exit;
+if (!isset($_SESSION['admin_ok']) && remember_check()) {
+    $_SESSION['admin_ok'] = true;
 }
 
 define('PRIVATE_DIR', __DIR__ . '/private');
