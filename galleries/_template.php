@@ -74,11 +74,12 @@ $characters    = $gallery['characters'];
         </div>
     </div>
     <div class="control-group">
-        <span class="control-label">Contenu 18+</span>
-        <label class="toggle-switch">
-            <input type="checkbox" id="r18Toggle">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
+        <span class="control-label">Contenu</span>
+        <div class="control-pills" id="contentPicker">
+            <button class="pill active" data-value="safe">Safe</button>
+            <button class="pill"        data-value="r18">18+</button>
+            <button class="pill"        data-value="all">Tout</button>
+        </div>
     </div>
 </div>
 

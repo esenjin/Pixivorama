@@ -52,7 +52,8 @@ $icon      = $type_icon[$gallery_type]  ?? '·';
 $has_order  = ($gallery_type === 'illust');
 // following : l'API retourne une page fixe, inutile de proposer un nb par page
 $has_perpage = ($gallery_type !== 'following');
-// Aucun toggle 18+ — galerie privée, tout est affiché
+// Le filtre contenu est disponible pour les galeries par tag et illust
+$has_mode = in_array($gallery_type, ['tag', 'illust', 'bookmark']);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -102,6 +103,16 @@ $has_perpage = ($gallery_type !== 'following');
         </div>
     </div>
     <?php endif; ?>
+    <?php if ($has_mode): ?>
+    <div class="control-group">
+        <span class="control-label">Contenu</span>
+        <div class="control-pills" id="contentPicker">
+            <button class="pill active" data-value="safe">Safe</button>
+            <button class="pill"        data-value="r18">18+</button>
+            <button class="pill"        data-value="all">Tout</button>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="status-bar" id="statusBar">—</div>
@@ -126,6 +137,7 @@ $has_perpage = ($gallery_type !== 'following');
     window.PIXIV_PROXY_URL = '../private-proxy.php';
     window.PIXIV_HAS_ORDER   = <?= $has_order  ? 'true' : 'false' ?>;
     window.PIXIV_HAS_PERPAGE = <?= $has_perpage ? 'true' : 'false' ?>;
+    window.PIXIV_HAS_MODE    = <?= $has_mode    ? 'true' : 'false' ?>;
     // type passé en paramètre fixe
     window.PIXIV_EXTRA_PARAMS = 'type=<?= htmlspecialchars($gallery_type) ?>';
 </script>

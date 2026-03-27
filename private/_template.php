@@ -75,7 +75,7 @@ $characters    = $gallery['characters'];
     <?php endforeach; ?>
 </nav>
 
-<!-- Barre de contrôles — sans toggle 18+ (galerie privée = tout affiché) -->
+<!-- Barre de contrôles -->
 <div class="controls-bar">
     <div class="control-group">
         <span class="control-label">Tri</span>
@@ -90,6 +90,14 @@ $characters    = $gallery['characters'];
             <button class="pill active" data-value="28">28</button>
             <button class="pill"        data-value="56">56</button>
             <button class="pill"        data-value="112">112</button>
+        </div>
+    </div>
+    <div class="control-group">
+        <span class="control-label">Contenu</span>
+        <div class="control-pills" id="contentPicker">
+            <button class="pill active" data-value="safe">Safe</button>
+            <button class="pill"        data-value="r18">18+</button>
+            <button class="pill"        data-value="all">Tout</button>
         </div>
     </div>
 </div>
@@ -114,9 +122,7 @@ $characters    = $gallery['characters'];
 <script>
     window.PIXIV_PER_PAGE    = <?= PIXIV_DEFAULT_PER_PAGE ?>;
     window.PIXIV_INITIAL_TAG = <?= json_encode($characters[0]['tag']) ?>;
-    // URL de base du proxy — tag et gallery seront ajoutés en paramètres séparés par scripts.js
     window.PIXIV_PROXY_URL   = '../private-proxy.php';
-    // Paramètres supplémentaires fixes à inclure dans chaque requête
     window.PIXIV_EXTRA_PARAMS = 'type=tag&gallery=<?= htmlspecialchars($slug) ?>';
 </script>
 <script src="../assets/scripts.js"></script>

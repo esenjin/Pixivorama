@@ -457,45 +457,6 @@ h1 {
     cursor: default;
 }
 
-/* ── Toggle switch 18+ ── */
-.toggle-switch {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-}
-.toggle-switch input {
-    position: absolute;
-    opacity: 0;
-    width: 0; height: 0;
-}
-.toggle-track {
-    width: 2.4rem;
-    height: 1.25rem;
-    background: var(--border);
-    border-radius: 99px;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 2px;
-    transition: background .25s, border-color .25s;
-}
-.toggle-thumb {
-    width: .85rem;
-    height: .85rem;
-    background: var(--text-muted);
-    border-radius: 50%;
-    transition: transform .25s, background .25s;
-}
-.toggle-switch input:checked ~ .toggle-track {
-    background: rgba(200,169,126,.15);
-    border-color: var(--accent);
-}
-.toggle-switch input:checked ~ .toggle-track .toggle-thumb {
-    transform: translateX(1.15rem);
-    background: var(--accent);
-}
-
 /* ── Tooltip titre illustration ── */
 .img-tooltip {
     position: fixed;

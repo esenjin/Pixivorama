@@ -185,11 +185,12 @@ require_once __DIR__ . '/../config.php';
         </div>
     </div>
     <div class="control-group">
-        <span class="control-label">Contenu 18+</span>
-        <label class="toggle-switch">
-            <input type="checkbox" id="r18Toggle">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
+        <span class="control-label">Contenu</span>
+        <div class="control-pills" id="contentPicker">
+            <button class="pill active" data-value="safe">Safe</button>
+            <button class="pill"        data-value="r18">18+</button>
+            <button class="pill"        data-value="all">Tout</button>
+        </div>
     </div>
 </div>
 
@@ -229,7 +230,7 @@ let currentTag     = '';
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
-let currentMode    = 'safe';
+let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
 let currentPeriod  = '';
 let loading        = false;
 
@@ -478,8 +479,12 @@ document.getElementById('perPagePicker').addEventListener('click', e => {
     resetPage();
 });
 
-document.getElementById('r18Toggle').addEventListener('change', e => {
-    currentMode = e.target.checked ? 'r18' : 'safe';
+document.getElementById('contentPicker').addEventListener('click', e => {
+    const btn = e.target.closest('.pill');
+    if (!btn || btn.classList.contains('active')) return;
+    document.querySelectorAll('#contentPicker .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.value;
     resetPage();
 });
 

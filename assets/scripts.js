@@ -9,7 +9,7 @@ let currentTag     = window.PIXIV_INITIAL_TAG;
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
-let currentMode    = 'safe';
+let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
 let currentPeriod  = '';
 let totalWorks     = 0;
 let loading        = false;
@@ -253,10 +253,14 @@ document.getElementById('perPagePicker').addEventListener('click', e => {
     resetPage();
 });
 
-const r18El = document.getElementById('r18Toggle');
-if (r18El) {
-    r18El.addEventListener('change', e => {
-        currentMode = e.target.checked ? 'r18' : 'safe';
+const contentPickerEl = document.getElementById('contentPicker');
+if (contentPickerEl) {
+    contentPickerEl.addEventListener('click', e => {
+        const btn = e.target.closest('.pill');
+        if (!btn || btn.classList.contains('active')) return;
+        contentPickerEl.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.value;
         resetPage();
     });
 }

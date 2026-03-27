@@ -17,6 +17,7 @@ const SEEN_STORE_KEY = `pixiv_seen_${GALLERY_SLUG}`;
 let currentPage    = 1;
 let currentPerPage = 28;
 let currentOrder   = 'popular_d';
+let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
 let currentPeriod  = '';
 let loading        = false;
 
@@ -136,6 +137,7 @@ async function load(page) {
             ? `&period=${encodeURIComponent(currentPeriod)}` : '';
         let url = `${base}page=${page}&per_page=${currentPerPage}`;
         if (HAS_ORDER) url += `&order=${currentOrder}${periodParam}`;
+        if (window.PIXIV_HAS_MODE !== false) url += `&mode=${currentMode}`;
 
         const res  = await fetch(url);
         const data = await res.json();
@@ -362,6 +364,18 @@ if (perPagePickerEl) {
         perPagePickerEl.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentPerPage = parseInt(btn.dataset.value, 10);
+        resetPage();
+    });
+}
+
+const contentPickerSpEl = document.getElementById('contentPicker');
+if (contentPickerSpEl) {
+    contentPickerSpEl.addEventListener('click', e => {
+        const btn = e.target.closest('.pill');
+        if (!btn || btn.classList.contains('active')) return;
+        contentPickerSpEl.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.value;
         resetPage();
     });
 }
