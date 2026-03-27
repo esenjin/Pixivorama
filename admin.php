@@ -41,7 +41,7 @@ global $SETTINGS;
 
 // ── Onglet actif ──
 $tab = $_GET['tab'] ?? 'session';
-if (!in_array($tab, ['session', 'galleries', 'options'])) $tab = 'session';
+if (!in_array($tab, ['session', 'galleries', 'options', 'maintenance'])) $tab = 'session';
 
 // ── Traitement POST ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -318,6 +318,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <?php endif; ?>
         </a>
         <a href="?tab=options"  class="admin-tab <?= $tab === 'options'  ? 'active' : '' ?>">Options</a>
+        <a href="?tab=maintenance" class="admin-tab <?= $tab === 'maintenance' ? 'active' : '' ?>">Maintenance</a>
     </nav>
 
     <!-- ══ Onglet Session ══ -->
@@ -585,6 +586,216 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <button type="submit" class="btn-primary">Changer le mot de passe</button>
         </form>
     </section>
+    <?php endif; ?>
+
+    <!-- ══ Onglet Maintenance ══ -->
+    <?php if ($tab === 'maintenance'): ?>
+
+    <section class="admin-section">
+        <p class="section-title">Régénération des galeries</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Recrée les fichiers <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
+            de toutes les galeries à partir de leurs templates respectifs
+            (<code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_template.php</code> /
+            <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_special.php</code>).
+            Utile après une mise à jour qui modifie le comportement des galeries.
+        </p>
+
+        <!-- Zone de preview -->
+        <div id="regenPreview" style="margin-bottom:1.2rem;display:none;">
+            <div class="char-row-header" style="grid-template-columns:1fr auto auto;margin-bottom:.4rem;">
+                <span>Galerie</span>
+                <span>Type</span>
+                <span>Template</span>
+            </div>
+            <div id="regenList" style="display:flex;flex-direction:column;gap:.3rem;"></div>
+        </div>
+
+        <!-- Barre de progression -->
+        <div id="regenProgressWrap" style="display:none;margin-bottom:1.2rem;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem;">
+                <span style="font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);" id="regenStatusLabel">En cours…</span>
+                <span style="font-size:.65rem;color:var(--accent);" id="regenPercent">0 %</span>
+            </div>
+            <div style="background:var(--border);border-radius:2px;height:3px;overflow:hidden;">
+                <div id="regenBar" style="height:100%;background:var(--accent);width:0;transition:width .3s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Résultats ligne par ligne -->
+        <div id="regenResults" style="display:none;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.2rem;">
+            <div id="regenResultList" style="padding:.6rem 0;"></div>
+        </div>
+
+        <!-- Résumé final -->
+        <div id="regenSummary" style="display:none;" class="alert alert-success"></div>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <button class="btn-primary" id="btnLoadGalleries" style="margin-top:0;" onclick="loadGalleriesPreview()">
+                Analyser les galeries
+            </button>
+            <button class="btn-primary" id="btnRegen" style="margin-top:0;display:none;" onclick="startRegen()">
+                Régénérer tout
+            </button>
+            <button class="btn-add" id="btnRegenCancel" style="display:none;width:auto;padding:.65rem 1.4rem;" onclick="resetRegen()">
+                Réinitialiser
+            </button>
+        </div>
+    </section>
+
+    <script>
+    // ── Maintenance : régénération des galeries ──
+    let regenGalleries = [];
+    let regenRunning   = false;
+
+    async function loadGalleriesPreview() {
+        const btn = document.getElementById('btnLoadGalleries');
+        btn.disabled    = true;
+        btn.textContent = 'Analyse…';
+
+        try {
+            const res  = await fetch('regen.php?dry=1');
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            regenGalleries = data.galleries;
+
+            const typeLabels = {
+                'public'            : '🌐 Publique',
+                'private:tag'       : '🔒 Privée tags',
+                'private:illust'    : '🔒 Illustrations',
+                'private:bookmark'  : '🔒 Bookmarks',
+                'private:following' : '🔒 Suivis',
+            };
+
+            document.getElementById('regenList').innerHTML = regenGalleries.map(g => {
+                const tplOk = g.template_ok
+                    ? '<span style="color:#5db87a;font-size:.6rem;">✓ OK</span>'
+                    : '<span style="color:#c0776a;font-size:.6rem;">✗ Manquant</span>';
+                return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:.6rem;align-items:center;
+                                    padding:.45rem .6rem;border-radius:var(--radius);background:var(--bg);">
+                    <span style="font-size:.75rem;color:var(--text);">
+                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.95rem;">${escH(g.title)}</span>
+                        <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.4rem;">${escH(g.slug)}</code>
+                    </span>
+                    <span style="font-size:.6rem;color:var(--text-muted);white-space:nowrap;">${typeLabels[g.type] || g.type}</span>
+                    ${tplOk}
+                </div>`;
+            }).join('');
+
+            document.getElementById('regenPreview').style.display    = '';
+            document.getElementById('btnRegen').style.display        = '';
+            document.getElementById('btnRegenCancel').style.display  = '';
+            btn.style.display = 'none';
+
+        } catch (err) {
+            btn.disabled    = false;
+            btn.textContent = 'Analyser les galeries';
+            _modal('Erreur : ' + err.message);
+        }
+    }
+
+    async function startRegen() {
+        if (regenRunning) return;
+        regenRunning = true;
+
+        document.getElementById('btnRegen').disabled               = true;
+        document.getElementById('regenPreview').style.display      = 'none';
+        document.getElementById('regenProgressWrap').style.display = '';
+        document.getElementById('regenResults').style.display      = '';
+        document.getElementById('regenSummary').style.display      = 'none';
+        document.getElementById('regenResultList').innerHTML       = '';
+
+        const bar         = document.getElementById('regenBar');
+        const pct         = document.getElementById('regenPercent');
+        const statusLabel = document.getElementById('regenStatusLabel');
+
+        const res    = await fetch('regen.php', { method: 'POST', body: new URLSearchParams({ action: 'regen' }) });
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buffer  = '';
+
+        function parseEvents(chunk) {
+            buffer += chunk;
+            const events = buffer.split('\n\n');
+            buffer = events.pop();
+            for (const block of events) {
+                let eventName = 'message', dataStr = '';
+                for (const line of block.split('\n')) {
+                    if (line.startsWith('event: ')) eventName = line.slice(7);
+                    if (line.startsWith('data: '))  dataStr   = line.slice(6);
+                }
+                if (!dataStr) continue;
+                try { handleEvent(eventName, JSON.parse(dataStr)); } catch {}
+            }
+        }
+
+        function handleEvent(name, data) {
+            if (name === 'start') {
+                statusLabel.textContent = `Régénération de ${data.total} galerie${data.total > 1 ? 's' : ''}…`;
+            } else if (name === 'progress') {
+                bar.style.width         = data.percent + '%';
+                pct.textContent         = data.percent + ' %';
+                statusLabel.textContent = `${data.index} / ${data.total} — ${data.title}`;
+                addResultRow(data);
+            } else if (name === 'done') {
+                bar.style.width         = '100%';
+                pct.textContent         = '100 %';
+                statusLabel.textContent = 'Terminé';
+                const summary     = document.getElementById('regenSummary');
+                summary.style.display = '';
+                summary.className = data.errors > 0 ? 'alert alert-error' : 'alert alert-success';
+                summary.textContent = `${data.success} galerie${data.success > 1 ? 's' : ''} régénérée${data.success > 1 ? 's' : ''} avec succès`
+                    + (data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : '') + '.';
+                regenRunning = false;
+                document.getElementById('btnRegen').disabled = false;
+            }
+        }
+
+        function addResultRow(data) {
+            const list = document.getElementById('regenResultList');
+            const ok   = data.status === 'ok';
+            const row  = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.35rem .8rem;border-bottom:1px solid var(--border);';
+            row.innerHTML = `
+                <span style="font-size:.8rem;flex-shrink:0;color:${ok ? '#5db87a' : '#c0776a'};">${ok ? '✓' : '✗'}</span>
+                <span style="flex:1;font-size:.72rem;color:var(--text);">${escH(data.title)}
+                    <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .3rem;border-radius:2px;margin-left:.3rem;">${escH(data.slug)}</code>
+                </span>
+                <span style="font-size:.62rem;color:${ok ? '#5db87a' : '#c0776a'};white-space:nowrap;">${escH(data.message)}</span>
+            `;
+            list.appendChild(row);
+            list.parentElement.scrollTop = list.parentElement.scrollHeight;
+        }
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            parseEvents(decoder.decode(value, { stream: true }));
+        }
+    }
+
+    function resetRegen() {
+        regenGalleries = [];
+        regenRunning   = false;
+        document.getElementById('regenPreview').style.display      = 'none';
+        document.getElementById('regenProgressWrap').style.display = 'none';
+        document.getElementById('regenResults').style.display      = 'none';
+        document.getElementById('regenSummary').style.display      = 'none';
+        document.getElementById('regenResultList').innerHTML       = '';
+        document.getElementById('regenBar').style.width            = '0';
+        document.getElementById('btnRegen').style.display          = 'none';
+        document.getElementById('btnRegenCancel').style.display    = 'none';
+        document.getElementById('btnLoadGalleries').style.display  = '';
+        document.getElementById('btnLoadGalleries').disabled       = false;
+        document.getElementById('btnLoadGalleries').textContent    = 'Analyser les galeries';
+    }
+
+    function escH(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+
     <?php endif; ?>
 
 </div><!-- /.admin-wrap -->
