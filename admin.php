@@ -796,6 +796,425 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     }
     </script>
 
+    <!-- ══ Import / Export ══ -->
+    <section class="admin-section" style="margin-top:1.5rem;">
+        <p class="section-title">Sauvegardes & Import</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Les sauvegardes incluent toutes les galeries publiques et privées (fichiers JSON uniquement).
+            Elles sont stockées dans <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">saves/</code>
+            et non accessibles publiquement.
+        </p>
+
+        <!-- Tabs internes -->
+        <div style="display:flex;gap:0;margin-bottom:1.6rem;border-bottom:1px solid var(--border);">
+            <button class="backup-tab active" data-panel="export" onclick="switchBackupTab('export')">Exporter</button>
+            <button class="backup-tab" data-panel="import" onclick="switchBackupTab('import')">Importer</button>
+        </div>
+
+        <!-- ── Panel Export ── -->
+        <div id="backupPanelExport">
+
+            <!-- Liste des sauvegardes -->
+            <div id="savesList" style="margin-bottom:1.4rem;"></div>
+
+            <!-- Bouton créer -->
+            <button class="btn-primary" id="btnExport" style="margin-top:0;" onclick="doExport()">
+                Créer une sauvegarde maintenant
+            </button>
+            <div id="exportResult" style="display:none;margin-top:1rem;"></div>
+        </div>
+
+        <!-- ── Panel Import ── -->
+        <div id="backupPanelImport" style="display:none;">
+
+            <!-- Source : sauvegarde existante ou upload -->
+            <div style="margin-bottom:1.4rem;">
+                <div style="display:flex;gap:4px;margin-bottom:1rem;">
+                    <button class="pill active" id="importSrcSave" onclick="switchImportSrc('save')">Depuis une sauvegarde</button>
+                    <button class="pill" id="importSrcUpload" onclick="switchImportSrc('upload')">Importer un fichier ZIP</button>
+                </div>
+
+                <!-- Sélection sauvegarde existante -->
+                <div id="importSrcSavePanel">
+                    <div id="importSaveList" style="margin-bottom:.8rem;"></div>
+                    <p id="importSaveEmpty" style="display:none;font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;">
+                        Aucune sauvegarde disponible. Créez-en une depuis l'onglet "Exporter".
+                    </p>
+                </div>
+
+                <!-- Upload fichier ZIP -->
+                <div id="importSrcUploadPanel" style="display:none;">
+                    <label style="display:flex;flex-direction:column;gap:.5rem;">
+                        <span style="font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Fichier ZIP</span>
+                        <input type="file" id="importFileInput" accept=".zip"
+                            style="font-family:'Josefin Sans',sans-serif;font-size:.78rem;color:var(--text);background:var(--bg);
+                                    border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .7rem;cursor:pointer;">
+                    </label>
+                    <button class="btn-primary" style="margin-top:.8rem;" onclick="analyzeUpload()">Analyser le fichier</button>
+                </div>
+            </div>
+
+            <!-- Récap analyse -->
+            <div id="importAnalysis" style="display:none;">
+                <div id="importMeta" style="margin-bottom:1rem;padding:.6rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:.65rem;letter-spacing:.08em;color:var(--text-muted);"></div>
+
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.5rem;">
+                    <span style="font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Galeries dans la sauvegarde</span>
+                    <div style="display:flex;gap:.5rem;">
+                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:.6rem;" onclick="selectAllImport(true)">Tout cocher</button>
+                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:.6rem;" onclick="selectAllImport(false)">Tout décocher</button>
+                    </div>
+                </div>
+
+                <div id="importGalleryList" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.2rem;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:.6rem;"></div>
+
+                <button class="btn-primary" id="btnDoImport" style="margin-top:0;" onclick="doImport()">
+                    Importer la sélection
+                </button>
+            </div>
+
+            <div id="importResult" style="display:none;margin-top:1rem;"></div>
+        </div>
+    </section>
+
+    <script>
+    // ════════════════════════════════════════════════════════════
+    //  BACKUP — Import / Export
+    // ════════════════════════════════════════════════════════════
+
+    let importSource   = 'save';   // 'save' | 'upload'
+    let analyzedSource = null;     // nom du fichier analysé (pour l'import)
+    let analyzedData   = null;     // résultat de l'analyse
+
+    // ── Navigation ──
+    function switchBackupTab(panel) {
+        document.querySelectorAll('.backup-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === panel));
+        document.getElementById('backupPanelExport').style.display = panel === 'export' ? '' : 'none';
+        document.getElementById('backupPanelImport').style.display = panel === 'import' ? '' : 'none';
+        if (panel === 'import') refreshImportSaveList();
+    }
+
+    function switchImportSrc(src) {
+        importSource = src;
+        document.getElementById('importSrcSave').classList.toggle('active', src === 'save');
+        document.getElementById('importSrcUpload').classList.toggle('active', src === 'upload');
+        document.getElementById('importSrcSavePanel').style.display   = src === 'save'   ? '' : 'none';
+        document.getElementById('importSrcUploadPanel').style.display = src === 'upload' ? '' : 'none';
+        resetImportAnalysis();
+    }
+
+    function resetImportAnalysis() {
+        analyzedSource = null;
+        analyzedData   = null;
+        document.getElementById('importAnalysis').style.display = 'none';
+        document.getElementById('importResult').style.display   = 'none';
+    }
+
+    // ── Formatage ──
+    function fmtSize(bytes) {
+        if (bytes < 1024) return bytes + ' o';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' Ko';
+        return (bytes / 1048576).toFixed(1) + ' Mo';
+    }
+    function fmtDate(ts) {
+        return new Date(ts * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    // ── Liste des sauvegardes (panel export) ──
+    async function loadSavesList() {
+        const container = document.getElementById('savesList');
+        try {
+            const res  = await fetch('backup.php?action=list');
+            const data = await res.json();
+            if (!data.saves || !data.saves.length) {
+                container.innerHTML = '<p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;">Aucune sauvegarde pour l\'instant.</p>';
+                return;
+            }
+            container.innerHTML = data.saves.map(s => `
+                <div class="save-item">
+                    <div class="save-item-info">
+                        <div class="save-item-name">${escH(s.file)}</div>
+                        <div class="save-item-meta">${fmtDate(s.date)} · ${fmtSize(s.size)}</div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;flex-shrink:0;">
+                        <button class="btn-small" onclick="doRestore('${escH(s.file)}')">Restaurer</button>
+                        <button class="btn-small" style="color:#c0776a;border-color:#6a3030;"
+                                onclick="deleteSave('${escH(s.file)}', this)">Supprimer</button>
+                    </div>
+                </div>`).join('');
+        } catch {
+            container.innerHTML = '<p style="font-size:.68rem;color:#c0776a;">Erreur lors du chargement des sauvegardes.</p>';
+        }
+    }
+
+    async function deleteSave(file, btn) {
+        const ok = await _modal(`Supprimer la sauvegarde <em>${file}</em> ?<br>Cette action est irréversible.`, { confirm: true });
+        if (!ok) return;
+        btn.disabled = true;
+        const fd = new FormData();
+        fd.append('action', 'delete'); fd.append('file', file);
+        const res  = await fetch('backup.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) { loadSavesList(); refreshImportSaveList(); }
+        else _modal('Erreur : ' + data.error);
+    }
+
+    // ── Export ──
+    async function doExport() {
+        const btn = document.getElementById('btnExport');
+        const res_el = document.getElementById('exportResult');
+        btn.disabled = true; btn.textContent = 'Création…';
+        res_el.style.display = 'none';
+        try {
+            const fd = new FormData(); fd.append('action', 'export');
+            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            res_el.className = 'alert alert-success';
+            res_el.textContent = `Sauvegarde créée : ${data.file} (${fmtSize(data.size)}, ${data.count} galerie${data.count > 1 ? 's' : ''})`;
+            res_el.style.display = '';
+            loadSavesList();
+            refreshImportSaveList();
+        } catch (err) {
+            res_el.className = 'alert alert-error';
+            res_el.textContent = 'Erreur : ' + err.message;
+            res_el.style.display = '';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Créer une sauvegarde maintenant';
+        }
+    }
+
+    // ── Liste sauvegardes dans le panel import ──
+    async function refreshImportSaveList() {
+        const container = document.getElementById('importSaveList');
+        const empty     = document.getElementById('importSaveEmpty');
+        try {
+            const res  = await fetch('backup.php?action=list');
+            const data = await res.json();
+            if (!data.saves || !data.saves.length) {
+                container.innerHTML = '';
+                empty.style.display = '';
+                return;
+            }
+            empty.style.display = 'none';
+            container.innerHTML = data.saves.map(s => `
+                <div class="save-item" style="cursor:pointer;" onclick="analyzeFromSave('${escH(s.file)}', this)">
+                    <div class="save-item-info">
+                        <div class="save-item-name">${escH(s.file)}</div>
+                        <div class="save-item-meta">${fmtDate(s.date)} · ${fmtSize(s.size)}</div>
+                    </div>
+                    <span class="btn-small">Analyser →</span>
+                </div>`).join('');
+        } catch {}
+    }
+
+    // ── Analyse depuis sauvegarde existante ──
+    async function analyzeFromSave(file, rowEl) {
+        resetImportAnalysis();
+        document.querySelectorAll('#importSaveList .save-item').forEach(el => el.style.borderColor = '');
+        if (rowEl) rowEl.style.borderColor = 'var(--accent)';
+
+        const fd = new FormData(); fd.append('action', 'analyze'); fd.append('savefile', file);
+        await runAnalysis(fd, file);
+    }
+
+    // ── Analyse depuis upload ──
+    async function analyzeUpload() {
+        const input = document.getElementById('importFileInput');
+        if (!input.files || !input.files[0]) { _modal('Veuillez sélectionner un fichier ZIP.'); return; }
+        resetImportAnalysis();
+        const fd = new FormData(); fd.append('action', 'analyze'); fd.append('zipfile', input.files[0]);
+        await runAnalysis(fd, input.files[0].name);
+    }
+
+    async function runAnalysis(fd, sourceName) {
+        document.getElementById('importAnalysis').style.display = 'none';
+        try {
+            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            analyzedSource = sourceName;
+            analyzedData   = data;
+            renderAnalysis(data);
+        } catch (err) {
+            _modal('Erreur lors de l\'analyse : ' + err.message);
+        }
+    }
+
+    function renderAnalysis(data) {
+        const meta = data.meta || {};
+        document.getElementById('importMeta').innerHTML =
+            `Source : <strong style="color:var(--text)">${escH(data.source)}</strong>`
+            + (meta.created_at ? ` · Créée le ${new Date(meta.created_at).toLocaleString('fr-FR', {dateStyle:'short',timeStyle:'short'})}` : '')
+            + (meta.version    ? ` · Version ${escH(meta.version)}` : '')
+            + ` · <strong style="color:var(--text)">${data.galleries.length}</strong> galerie${data.galleries.length > 1 ? 's' : ''}`;
+
+        const TYPE_LABELS = {
+            'public': '🌐 Publique',
+            'private:tag': '🔒 Privée tags',
+            'private:illust': '🔒 Illustrations',
+            'private:bookmark': '🔒 Bookmarks',
+            'private:following': '🔒 Artistes suivis',
+        };
+
+        document.getElementById('importGalleryList').innerHTML = data.galleries.map((g, i) => `
+            <div class="import-row${g.conflict ? ' conflict' : ''}" id="importRow${i}">
+                <input type="checkbox" class="import-row-check" id="importCheck${i}"
+                    ${g.conflict ? '' : 'checked'}
+                    onchange="updateImportRow(${i})">
+                <div class="import-row-info">
+                    <div class="import-row-title">${escH(g.title)}</div>
+                    <div class="import-row-meta">
+                        ${TYPE_LABELS[g.type] || g.type}
+                        ${g.chars > 0 ? ` · ${g.chars} tag${g.chars > 1 ? 's' : ''}` : ''}
+                    </div>
+                </div>
+                <div class="import-row-slug">
+                    <input type="text" class="import-slug-input" id="importSlug${i}"
+                        value="${escH(g.slug)}"
+                        maxlength="20" pattern="[a-z0-9\\-]{1,20}"
+                        title="a-z, 0-9, tirets, 20 car. max"
+                        oninput="validateSlugInput(this)">
+                    ${g.conflict
+                        ? `<span class="conflict-badge">⚠ Conflit</span>`
+                        : `<span class="new-badge">✓ Nouveau</span>`}
+                </div>
+            </div>`).join('');
+
+        document.getElementById('importAnalysis').style.display = '';
+    }
+
+    function updateImportRow(i) {
+        const row   = document.getElementById('importRow' + i);
+        const check = document.getElementById('importCheck' + i);
+        row.classList.toggle('selected', check.checked);
+    }
+
+    function selectAllImport(checked) {
+        document.querySelectorAll('.import-row-check').forEach((cb, i) => {
+            cb.checked = checked;
+            updateImportRow(i);
+        });
+    }
+
+    function validateSlugInput(input) {
+        input.value = input.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
+    }
+
+    // ── Import effectif ──
+    async function doImport() {
+        if (!analyzedData) return;
+
+        // Construire la sélection
+        const selections = [];
+        analyzedData.galleries.forEach((g, i) => {
+            const check = document.getElementById('importCheck' + i);
+            const slug  = document.getElementById('importSlug'  + i);
+            if (!check || !check.checked) return;
+            if (!slug.value.match(/^[a-z0-9\-]{1,20}$/)) {
+                slug.style.borderColor = '#c0776a'; return;
+            }
+            slug.style.borderColor = '';
+            selections.push({ original_slug: g.slug, new_slug: slug.value, type: g.type });
+        });
+
+        if (!selections.length) { _modal('Sélectionnez au moins une galerie à importer.'); return; }
+
+        // Avertir pour les conflits
+        const conflicts = selections.filter(s => {
+            const orig = analyzedData.galleries.find(g => g.slug === s.original_slug);
+            return orig?.conflict && s.new_slug === s.original_slug;
+        });
+
+        if (conflicts.length) {
+            const names = conflicts.map(s => {
+                const g = analyzedData.galleries.find(x => x.slug === s.original_slug);
+                return `<em>${g?.title || s.original_slug}</em>`;
+            }).join(', ');
+            const ok = await _modal(
+                `${conflicts.length} galerie${conflicts.length > 1 ? 's' : ''} va écraser une galerie existante : ${names}.<br><br>Continuer quand même ?`,
+                { confirm: true }
+            );
+            if (!ok) return;
+        }
+
+        const btn = document.getElementById('btnDoImport');
+        btn.disabled = true; btn.textContent = 'Import en cours…';
+
+        const fd = new FormData();
+        fd.append('action', 'import');
+        fd.append('selections', JSON.stringify(selections));
+
+        // Source
+        const fileInput = document.getElementById('importFileInput');
+        if (importSource === 'upload' && fileInput.files && fileInput.files[0]) {
+            fd.append('zipfile', fileInput.files[0]);
+        } else {
+            fd.append('savefile', analyzedSource);
+        }
+
+        try {
+            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            const resEl = document.getElementById('importResult');
+            const hasErrors = data.errors > 0;
+            resEl.className = hasErrors ? 'alert alert-error' : 'alert alert-success';
+
+            const lines = data.results.map(r =>
+                `<span style="color:${r.status === 'ok' ? '#7ec896' : '#c0776a'}">${r.status === 'ok' ? '✓' : '✗'}</span> `
+                + `<em>${escH(r.slug)}</em> — ${escH(r.message)}`
+            ).join('<br>');
+
+            resEl.innerHTML = `<strong>${data.success} importée${data.success > 1 ? 's' : ''}${data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : ''}</strong><br><span style="font-size:.65rem;line-height:2;">${lines}</span>`;
+            resEl.style.display = '';
+        } catch (err) {
+            const resEl = document.getElementById('importResult');
+            resEl.className = 'alert alert-error';
+            resEl.textContent = 'Erreur : ' + err.message;
+            resEl.style.display = '';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Importer la sélection';
+        }
+    }
+
+    // ── Restauration complète ──────────────────────────────────
+    // (accessible depuis la liste des sauvegardes en panel export)
+    async function doRestore(file) {
+        const ok = await _modal(
+            `<strong>Restauration complète</strong><br><br>`
+            + `Cela va <span style="color:#c0776a">remplacer toutes vos galeries actuelles</span> par celles de la sauvegarde :<br>`
+            + `<em>${escH(file)}</em><br><br>`
+            + `Les galeries créées après cette sauvegarde seront <strong>définitivement perdues</strong>.<br><br>`
+            + `Êtes-vous sûr de vouloir continuer ?`,
+            { confirm: true }
+        );
+        if (!ok) return;
+
+        const fd = new FormData();
+        fd.append('action', 'restore');
+        fd.append('savefile', file);
+
+        const res  = await fetch('backup.php', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.error) { _modal('Erreur : ' + data.error); return; }
+
+        const resEl = document.getElementById('exportResult');
+        resEl.className = 'alert alert-success';
+        resEl.textContent = `Restauration terminée : ${data.count} galerie${data.count > 1 ? 's' : ''} restaurée${data.count > 1 ? 's' : ''}.`;
+        resEl.style.display = '';
+    }
+
+    // ── Init ──
+    loadSavesList();
+
+    function escH(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+
     <?php endif; ?>
 
 </div><!-- /.admin-wrap -->
