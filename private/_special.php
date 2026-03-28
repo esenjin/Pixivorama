@@ -132,14 +132,17 @@ $has_mode = in_array($gallery_type, ['tag', 'illust', 'bookmark']);
     </div>
 </footer>
 
+<?php
+$admin_defs = get_admin_gallery_defaults($SETTINGS);
+?>
 <script>
     window.PIXIV_PER_PAGE  = <?= PIXIV_DEFAULT_PER_PAGE ?>;
     window.PIXIV_PROXY_URL = '../private-proxy.php';
     window.PIXIV_HAS_ORDER   = <?= $has_order  ? 'true' : 'false' ?>;
     window.PIXIV_HAS_PERPAGE = <?= $has_perpage ? 'true' : 'false' ?>;
     window.PIXIV_HAS_MODE    = <?= $has_mode    ? 'true' : 'false' ?>;
-    // type passé en paramètre fixe
     window.PIXIV_EXTRA_PARAMS = 'type=<?= htmlspecialchars($gallery_type) ?>';
+    window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
 </script>
 <script src="../assets/scripts-special.js"></script>
 </body>

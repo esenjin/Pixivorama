@@ -6,6 +6,9 @@
 // ============================================================
 require_once __DIR__ . '/../config.php';
 
+// Session optionnelle (pour les préférences admin)
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 // Détermine le slug depuis le nom du fichier lui-même
 $slug = basename(__FILE__, '.php');
 
@@ -114,10 +117,20 @@ $characters    = $gallery['characters'];
     </div>
 </footer>
 
+<?php
+// Injecter les préférences admin si la session est active
+$admin_defs = null;
+if (!empty($_SESSION['admin_ok'])) {
+    $admin_defs = get_admin_gallery_defaults($SETTINGS);
+}
+?>
 <script>
     window.PIXIV_PER_PAGE    = <?= PIXIV_DEFAULT_PER_PAGE ?>;
     window.PIXIV_INITIAL_TAG = <?= json_encode($characters[0]['tag']) ?>;
     window.PIXIV_PROXY_URL   = '../pixiv-proxy.php';
+    <?php if ($admin_defs): ?>
+    window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
+    <?php endif; ?>
 </script>
 <script src="../assets/scripts.js"></script>
 </body>

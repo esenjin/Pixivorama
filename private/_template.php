@@ -119,11 +119,15 @@ $characters    = $gallery['characters'];
     </div>
 </footer>
 
+<?php
+$admin_defs = get_admin_gallery_defaults($SETTINGS); // toujours dispo ici (session obligatoire)
+?>
 <script>
     window.PIXIV_PER_PAGE    = <?= PIXIV_DEFAULT_PER_PAGE ?>;
     window.PIXIV_INITIAL_TAG = <?= json_encode($characters[0]['tag']) ?>;
     window.PIXIV_PROXY_URL   = '../private-proxy.php';
     window.PIXIV_EXTRA_PARAMS = 'type=tag&gallery=<?= htmlspecialchars($slug) ?>';
+    window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
 </script>
 <script src="../assets/scripts.js"></script>
 </body>

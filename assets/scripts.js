@@ -5,12 +5,15 @@
 const PROXY_URL    = window.PIXIV_PROXY_URL    || 'pixiv-proxy.php';
 const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
 
+// Appliquer les préférences admin si présentes, sinon valeurs publiques par défaut
+const _DEFS = window.PIXIV_DEFAULTS || {};
+
 let currentTag     = window.PIXIV_INITIAL_TAG;
 let currentPage    = 1;
-let currentPerPage = 28;
-let currentOrder   = 'popular_d';
-let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
-let currentPeriod  = '';
+let currentPerPage = _DEFS.per_page || 28;
+let currentOrder   = _DEFS.order    || 'popular_d';
+let currentMode    = _DEFS.mode     || 'safe';
+let currentPeriod  = _DEFS.period   !== undefined ? _DEFS.period : '';
 let totalWorks     = 0;
 let loading        = false;
 
@@ -19,6 +22,28 @@ const statusBar  = document.getElementById('statusBar');
 const pagination = document.getElementById('pagination');
 const btnToTop   = document.getElementById('btnToTop');
 const tooltip    = document.getElementById('imgTooltip');
+
+// ── Sync des pills avec les defaults au chargement ──
+(function syncDefaultPills() {
+    if (!window.PIXIV_DEFAULTS) return;
+    const d = window.PIXIV_DEFAULTS;
+
+    if (d.order) {
+        document.querySelectorAll('#orderPicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value === d.order);
+        });
+    }
+    if (d.per_page) {
+        document.querySelectorAll('#perPagePicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value == d.per_page);
+        });
+    }
+    if (d.mode) {
+        document.querySelectorAll('#contentPicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value === d.mode);
+        });
+    }
+})();
 
 // ── Squelettes de chargement ──
 function showSkeletons(n = 12) {
@@ -242,6 +267,9 @@ if (orderPickerEl) {
         else removePeriodPicker();
         resetPage();
     });
+
+    // Si le default admin est "date_d", pas de period picker au départ
+    if (currentOrder === 'date_d') removePeriodPicker();
 }
 
 document.getElementById('perPagePicker').addEventListener('click', e => {

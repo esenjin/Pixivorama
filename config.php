@@ -183,3 +183,23 @@ define('PIXIV_DEFAULT_PER_PAGE', 28);
 define('PIXIV_DEFAULT_ORDER',    'popular_d');
 define('PIXIV_DEFAULT_MODE',     'safe');
 define('PIXIV_AI_TYPE',          1);
+
+// ── Préférences d'affichage admin ───────────────────────────
+
+/**
+ * Retourne les préférences de galerie pour l'admin connecté.
+ * Fusionne les valeurs sauvegardées avec les valeurs par défaut publiques.
+ */
+function get_admin_gallery_defaults(array $settings): array {
+    $saved = $settings['gallery_defaults'] ?? [];
+    return [
+        'order'    => in_array($saved['order']    ?? '', ['popular_d', 'date_d'], true)
+                        ? $saved['order'] : PIXIV_DEFAULT_ORDER,
+        'period'   => in_array($saved['period']   ?? '', ['', 'day', 'week', 'month', '6month', 'year'], true)
+                        ? $saved['period'] : '',
+        'per_page' => in_array((int)($saved['per_page'] ?? 0), [28, 56, 112], true)
+                        ? (int)$saved['per_page'] : PIXIV_DEFAULT_PER_PAGE,
+        'mode'     => in_array($saved['mode']     ?? '', ['safe', 'r18', 'all'], true)
+                        ? $saved['mode'] : PIXIV_DEFAULT_MODE,
+    ];
+}

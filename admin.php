@@ -187,6 +187,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Préférences d'affichage galeries ---
+    elseif ($action === 'update_gallery_defaults') {
+        $tab      = 'options';
+        $order    = $_POST['def_order']    ?? 'popular_d';
+        $period   = $_POST['def_period']   ?? '';
+        $per_page = (int)($_POST['def_per_page'] ?? 28);
+        $mode     = $_POST['def_mode']     ?? 'safe';
+
+        if (!in_array($order,    ['popular_d', 'date_d'], true))                     $order    = 'popular_d';
+        if (!in_array($period,   ['', 'day', 'week', 'month', '6month', 'year'], true)) $period = '';
+        if (!in_array($per_page, [28, 56, 112], true))                               $per_page = 28;
+        if (!in_array($mode,     ['safe', 'r18', 'all'], true))                      $mode     = 'safe';
+
+        $SETTINGS['gallery_defaults'] = compact('order', 'period', 'per_page', 'mode');
+        save_settings($SETTINGS);
+        $success = 'Préférences d\'affichage enregistrées.';
+    }
+
     // Redirect PRG
     $qs = '?tab=' . $tab;
     if ($success) $qs .= '&msg=' . urlencode($success) . '&mt=success';
@@ -584,6 +602,79 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
             <button type="submit" class="btn-primary">Changer le mot de passe</button>
+        </form>
+    </section>
+
+    <!-- ── Préférences d'affichage (admin) ── -->
+    <?php $defs = get_admin_gallery_defaults($settings); ?>
+    <section class="admin-section">
+        <p class="section-title">Préférences d'affichage</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.6rem;line-height:1.6;">
+            Appliquées uniquement quand vous êtes connecté en administration.
+            Les visiteurs voient toujours les valeurs publiques par défaut.
+        </p>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_gallery_defaults">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.4rem;">
+
+                <div class="field" style="margin-bottom:0;">
+                    <label>Tri par défaut</label>
+                    <div class="control-pills" style="margin-top:.4rem;">
+                        <!-- Tri -->
+                        <button type="button" class="pill <?= $defs['order']==='popular_d'?'active':'' ?>"
+                                data-value="popular_d" onclick="pickAdminPref(this,'def_order')">Populaires</button>
+                        <button type="button" class="pill <?= $defs['order']==='date_d'?'active':'' ?>"
+                                data-value="date_d" onclick="pickAdminPref(this,'def_order')">Récentes</button>
+                    </div>
+                    <input type="hidden" name="def_order" id="def_order" value="<?= htmlspecialchars($defs['order']) ?>">
+                </div>
+
+                <div class="field" style="margin-bottom:0;">
+                    <label>Contenu par défaut</label>
+                    <div class="control-pills" style="margin-top:.4rem;">
+                        <!-- Contenu -->
+                        <button type="button" class="pill <?= $defs['mode']==='safe'?'active':'' ?>"
+                                data-value="safe" onclick="pickAdminPref(this,'def_mode')">Safe</button>
+                        <button type="button" class="pill <?= $defs['mode']==='r18'?'active':'' ?>"
+                                data-value="r18" onclick="pickAdminPref(this,'def_mode')">18+</button>
+                        <button type="button" class="pill <?= $defs['mode']==='all'?'active':'' ?>"
+                                data-value="all" onclick="pickAdminPref(this,'def_mode')">Tout</button>
+                    </div>
+                    <input type="hidden" name="def_mode" id="def_mode" value="<?= htmlspecialchars($defs['mode']) ?>">
+                </div>
+
+                <div class="field" style="margin-bottom:0;">
+                    <label>Illustrations par page</label>
+                    <div class="control-pills" style="margin-top:.4rem;">
+                        <?php foreach ([28, 56, 112] as $pp): ?>
+                        <button type="button" class="pill <?= $defs['per_page']===$pp?'active':'' ?>"
+                                data-value="<?= $pp ?>" onclick="pickAdminPref(this,'def_per_page')"><?= $pp ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <input type="hidden" name="def_per_page" id="def_per_page" value="<?= $defs['per_page'] ?>">
+                </div>
+
+                <div class="field" style="margin-bottom:0;" id="defPeriodField">
+                    <label>
+                        Période par défaut
+                        <span style="font-size:.55rem;color:var(--text-muted);letter-spacing:.05em;text-transform:none;">
+                            (tri Populaires uniquement)
+                        </span>
+                    </label>
+                    <div class="control-pills" style="margin-top:.4rem;flex-wrap:wrap;gap:4px;">
+                        <!-- Période -->
+                        <?php foreach (['' => '∞', 'day' => '24h', 'week' => '7 jours', 'month' => '1 mois', '6month' => '6 mois', 'year' => '1 an'] as $val => $label): ?>
+                        <button type="button" class="pill <?= $defs['period']===$val?'active':'' ?>"
+                                data-value="<?= $val ?>" onclick="pickAdminPref(this,'def_period')"><?= $label ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <input type="hidden" name="def_period" id="def_period" value="<?= htmlspecialchars($defs['period']) ?>">
+                </div>
+
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top:0;">Enregistrer les préférences</button>
         </form>
     </section>
     <?php endif; ?>
@@ -1349,6 +1440,33 @@ function removeRow(btn) {
     }
     btn.closest('.char-row').remove();
 }
+
+// ── Préférences galerie admin ──
+function pickAdminPref(btn, targetId) {
+    btn.closest('.control-pills').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(targetId).value = btn.dataset.value;
+
+    if (targetId === 'def_order') {
+        const field = document.getElementById('defPeriodField');
+        if (field) {
+            const isDate = btn.dataset.value === 'date_d';
+            field.style.opacity       = isDate ? '.4' : '1';
+            field.style.pointerEvents = isDate ? 'none' : '';
+        }
+    }
+}
+
+// Init : griser la période si le défaut sauvé est "date_d"
+(function initDefPeriodState() {
+    const orderInput = document.getElementById('def_order');
+    const field      = document.getElementById('defPeriodField');
+    if (!orderInput || !field) return;
+    if (orderInput.value === 'date_d') {
+        field.style.opacity       = '.4';
+        field.style.pointerEvents = 'none';
+    }
+})();
 
 // ════════════════════════════════════════════════════════════
 //  DRAG & DROP — Tags (handle seul)

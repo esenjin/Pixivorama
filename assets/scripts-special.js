@@ -7,18 +7,19 @@ const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
 const HAS_ORDER    = window.PIXIV_HAS_ORDER   !== false;
 const HAS_PERPAGE  = window.PIXIV_HAS_PERPAGE !== false;
 
-// Détecte si on est sur une galerie "following" pour activer le suivi des nouveautés
 const IS_FOLLOWING = EXTRA_PARAMS.includes('type=following');
 
-// Clé localStorage propre à cette galerie (slug déduit de l'URL)
 const GALLERY_SLUG   = location.pathname.split('/').pop().replace('.php', '');
 const SEEN_STORE_KEY = `pixiv_seen_${GALLERY_SLUG}`;
 
+// Préférences admin
+const _DEFS = window.PIXIV_DEFAULTS || {};
+
 let currentPage    = 1;
-let currentPerPage = 28;
-let currentOrder   = 'popular_d';
-let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
-let currentPeriod  = '';
+let currentPerPage = _DEFS.per_page || 28;
+let currentOrder   = _DEFS.order    || 'popular_d';
+let currentMode    = _DEFS.mode     || 'safe';
+let currentPeriod  = _DEFS.period   !== undefined ? _DEFS.period : '';
 let loading        = false;
 
 // IDs déjà vus, chargés depuis localStorage — structure : { id: timestampSeconds }
@@ -27,6 +28,28 @@ const SEEN_TTL_DAYS = 90;
 
 let seenMap = loadSeenMap();       // Map<id, timestamp>
 let seenIds = new Set(seenMap.keys()); // Set rapide pour les lookups
+
+// ── Sync des pills avec les defaults admin au chargement ──
+(function syncDefaultPills() {
+    if (!window.PIXIV_DEFAULTS) return;
+    const d = window.PIXIV_DEFAULTS;
+    if (d.order) {
+        document.querySelectorAll('#orderPicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value === d.order);
+        });
+    }
+    if (d.per_page) {
+        document.querySelectorAll('#perPagePicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value == d.per_page);
+        });
+    }
+    if (d.mode) {
+        document.querySelectorAll('#contentPicker .pill').forEach(b => {
+            b.classList.toggle('active', b.dataset.value === d.mode);
+        });
+    }
+})();
+
 // IDs de la session courante (pour le bouton "marquer comme vues")
 let newIdsThisLoad = new Set();
 
@@ -342,7 +365,9 @@ function removePeriodPicker() {
 // ── Contrôles ──
 const orderPickerEl = document.getElementById('orderPicker');
 if (orderPickerEl) {
-    buildPeriodPicker();
+    // Afficher ou non le period picker selon le défaut
+    if (currentOrder === 'popular_d') buildPeriodPicker();
+    // Si date_d, pas de picker période
 
     orderPickerEl.addEventListener('click', e => {
         const btn = e.target.closest('.pill');
