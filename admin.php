@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!in_array($order,    ['popular_d', 'date_d'], true))                     $order    = 'popular_d';
         if (!in_array($period,   ['', 'day', 'week', 'month', '6month', 'year'], true)) $period = '';
-        if (!in_array($per_page, [28, 56, 112], true))                               $per_page = 28;
+        if (!in_array($per_page, [28, 56], true))                               $per_page = 28;
         if (!in_array($mode,     ['safe', 'r18', 'all'], true))                      $mode     = 'safe';
 
         $SETTINGS['gallery_defaults'] = compact('order', 'period', 'per_page', 'mode');
@@ -647,7 +647,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <div class="field" style="margin-bottom:0;">
                     <label>Illustrations par page</label>
                     <div class="control-pills" style="margin-top:.4rem;">
-                        <?php foreach ([28, 56, 112] as $pp): ?>
+                        <?php foreach ([28, 56] as $pp): ?>
                         <button type="button" class="pill <?= $defs['per_page']===$pp?'active':'' ?>"
                                 data-value="<?= $pp ?>" onclick="pickAdminPref(this,'def_per_page')"><?= $pp ?></button>
                         <?php endforeach; ?>

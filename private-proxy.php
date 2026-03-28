@@ -25,7 +25,7 @@ $page     = max(1, intval($_GET['page']     ?? 1));
 $per_page = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
 $order    = $_GET['order'] ?? PIXIV_DEFAULT_ORDER;
 
-if (!in_array($per_page, [28, 56, 112], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
+if (!in_array($per_page, [28, 56], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
 
 // Extraire l'userId depuis le PHPSESSID (format : userId_...)

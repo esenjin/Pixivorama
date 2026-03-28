@@ -197,7 +197,7 @@ function get_admin_gallery_defaults(array $settings): array {
                         ? $saved['order'] : PIXIV_DEFAULT_ORDER,
         'period'   => in_array($saved['period']   ?? '', ['', 'day', 'week', 'month', '6month', 'year'], true)
                         ? $saved['period'] : '',
-        'per_page' => in_array((int)($saved['per_page'] ?? 0), [28, 56, 112], true)
+        'per_page' => in_array((int)($saved['per_page'] ?? 0), [28, 56], true)
                         ? (int)$saved['per_page'] : PIXIV_DEFAULT_PER_PAGE,
         'mode'     => in_array($saved['mode']     ?? '', ['safe', 'r18', 'all'], true)
                         ? $saved['mode'] : PIXIV_DEFAULT_MODE,

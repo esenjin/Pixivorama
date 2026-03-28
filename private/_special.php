@@ -99,7 +99,6 @@ $has_mode = in_array($gallery_type, ['tag', 'illust', 'bookmark']);
         <div class="control-pills" id="perPagePicker">
             <button class="pill active" data-value="28">28</button>
             <button class="pill"        data-value="56">56</button>
-            <button class="pill"        data-value="112">112</button>
         </div>
     </div>
     <?php endif; ?>

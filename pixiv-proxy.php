@@ -15,7 +15,7 @@ $gallery    = trim($_GET['gallery']    ?? '');
 $period     = trim($_GET['period']     ?? '');
 $free_search = !empty($_GET['free_search']); // true si appelé depuis recherche.php
 
-if (!in_array($per_page, [28, 56, 112], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
+if (!in_array($per_page, [28, 56], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
 if (!in_array($mode, ['safe', 'r18', 'all'], true)) $mode = PIXIV_DEFAULT_MODE;
 
