@@ -52,6 +52,8 @@ case 'tag':
         $tag     = trim($_GET['tag']     ?? '');
         $gallery = trim($_GET['gallery'] ?? '');
         $period  = trim($_GET['period']  ?? '');
+        $mode = $_GET['mode'] ?? PIXIV_DEFAULT_MODE;
+        if (!in_array($mode, ['safe', 'r18', 'all'], true)) $mode = PIXIV_DEFAULT_MODE;
 
         if ($tag === '') {
             http_response_code(400);
@@ -102,7 +104,7 @@ case 'tag':
         $params_arr = [
             'word'   => $tag,
             'order'  => $order,
-            'mode'   => 'all',
+            'mode' => $mode,
             'p'      => $page,
             's_mode' => 's_tag',
             'lang'   => 'en',
