@@ -324,7 +324,8 @@ const PERIOD_OPTIONS = [
 ];
 
 function buildPeriodPicker() {
-    removePeriodPicker();
+    document.getElementById('periodPickerWrap')?.remove();
+
     const bar = document.querySelector('.controls-bar');
     if (!bar) return;
 
@@ -355,6 +356,11 @@ function buildPeriodPicker() {
         currentPeriod = btn.dataset.value;
         resetPage();
     });
+}
+
+function removePeriodPicker() {
+    document.getElementById('periodPickerWrap')?.remove();
+    currentPeriod = '';
 }
 
 function removePeriodPicker() {
