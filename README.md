@@ -94,7 +94,7 @@ La page `galleries/recherche.php` permet de rechercher n'importe quel tag Pixiv 
 ## Filtres disponibles
 
 - Tri par popularité (avec filtre de période : 24h, 7j, 1 mois, 6 mois, 1 an, tous)
-- Nombre d'illustrations par page : 28, 56, 112
+- Nombre d'illustrations par page : 28, 56
 - Contenu 18+ (toggle, galeries publiques et recherche libre uniquement)
 - Illustrations IA exclues par défaut
 
