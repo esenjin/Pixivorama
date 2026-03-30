@@ -2,7 +2,9 @@
 
 Galerie légère pour parcourir des illustrations Pixiv par tags, sans compte requis côté visiteur.
 
-![capture](https://concepts.esenjin.xyz/cyla/fichiers/69c18d372fb4f_1774292279.jpg)
+![captureP](https://concepts.esenjin.xyz/cyla/fichiers/69c18d372fb4f_1774292279.jpg)
+
+![captureA](https://concepts.esenjin.xyz/cyla/fichiers/69ca93d047269_1774883792.png)
 
 ## Fonctionnement
 
