@@ -101,6 +101,8 @@ function render(works) {
         const delay    = (i % 24) * 25;
         const pages    = w.pageCount > 1
             ? `<span class="badge-pages">${w.pageCount}</span>` : '';
+        const r18Badge  = w.xRestrict  >= 1 ? `<span class="badge-r18">18+</span>`  : '';
+        const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
         const thumbUrl = w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re');
         return `
         <a class="card" href="${pixivUrl}" target="_blank" rel="noopener"
@@ -110,6 +112,8 @@ function render(works) {
             <div class="thumb-wrap">
                 <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy">
                 ${pages}
+                ${r18Badge}
+                ${gifBadge}
             </div>
             <div class="card-info">
                 <div class="card-artist">${escHtml(w.userName)}</div>

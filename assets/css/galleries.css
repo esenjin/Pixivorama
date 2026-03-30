@@ -193,6 +193,38 @@ h1 {
     border-radius: 2px;
 }
 
+/* Badge 18+ */
+.badge-r18 {
+    position: absolute;
+    top: 7px; left: 7px;
+    background: rgba(192,80,80,.85);
+    border: 1px solid rgba(220,100,100,.5);
+    color: #ffd4d4;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .52rem;
+    font-weight: 400;
+    letter-spacing: .14em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+/* Badge GIF/ugoira — se place sous le badge 18+ si les deux sont présents */
+.badge-gif {
+    position: absolute;
+    bottom: 7px; left: 7px;
+    background: rgba(80,130,192,.85);
+    border: 1px solid rgba(100,160,220,.5);
+    color: #d4e8ff;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .52rem;
+    font-weight: 400;
+    letter-spacing: .14em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
 .card-info {
     padding: .65rem .8rem .75rem;
 }

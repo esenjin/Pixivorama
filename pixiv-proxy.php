@@ -107,13 +107,15 @@ $total     = $data['body']['illustManga']['total'] ?? 0;
 $works = [];
 foreach ($raw_works as $work) {
     $works[] = [
-        'id'        => $work['id'],
-        'title'     => $work['title'],
-        'userName'  => $work['userName'],
-        'userId'    => $work['userId'],
-        'thumb'     => $work['url'] ?? '',
-        'pageCount' => $work['pageCount'] ?? 1,
-        'tags'      => $work['tags'] ?? [],
+        'id'          => $work['id'],
+        'title'       => $work['title'],
+        'userName'    => $work['userName'],
+        'userId'      => $work['userId'],
+        'thumb'       => $work['url'] ?? '',
+        'pageCount'   => $work['pageCount'] ?? 1,
+        'tags'        => $work['tags'] ?? [],
+        'xRestrict'   => $work['xRestrict'] ?? 0,
+        'illustType'  => $work['illustType'] ?? 0,
     ];
 }
 

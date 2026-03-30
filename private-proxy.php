@@ -287,13 +287,15 @@ function normalise_work(array $w): array {
         $thumb = $w['image_urls']['medium'];
     }
     return [
-        'id'        => (string)($w['id']        ?? ''),
-        'title'     => (string)($w['title']     ?? ''),
-        'userName'  => (string)($w['userName']  ?? $w['user_name']  ?? ''),
-        'userId'    => (string)($w['userId']    ?? $w['user_id']    ?? ''),
-        'thumb'     => (string)$thumb,
-        'pageCount' => (int)  ($w['pageCount']  ?? $w['page_count'] ?? 1),
-        'tags'      => (array)($w['tags']       ?? []),
+        'id'         => (string)($w['id']        ?? ''),
+        'title'      => (string)($w['title']     ?? ''),
+        'userName'   => (string)($w['userName']  ?? $w['user_name']  ?? ''),
+        'userId'     => (string)($w['userId']    ?? $w['user_id']    ?? ''),
+        'thumb'      => (string)$thumb,
+        'pageCount'  => (int)  ($w['pageCount']  ?? $w['page_count'] ?? 1),
+        'tags'       => (array)($w['tags']       ?? []),
+        'xRestrict'  => (int)  ($w['xRestrict']  ?? $w['x_restrict'] ?? 0),
+        'illustType' => (int)  ($w['illustType'] ?? $w['illust_type'] ?? 0),
     ];
 }
 
