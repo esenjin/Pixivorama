@@ -196,7 +196,7 @@ h1 {
 /* Badge 18+ */
 .badge-r18 {
     position: absolute;
-    top: 7px; left: 7px;
+    bottom: 7px; right: 7px;
     background: rgba(192,80,80,.85);
     border: 1px solid rgba(220,100,100,.5);
     color: #ffd4d4;
