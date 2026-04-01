@@ -367,11 +367,6 @@ function removePeriodPicker() {
     currentPeriod = '';
 }
 
-function removePeriodPicker() {
-    document.getElementById('periodPickerWrap')?.remove();
-    currentPeriod = '';
-}
-
 // ── Contrôles ──
 const orderPickerEl = document.getElementById('orderPicker');
 if (orderPickerEl) {
