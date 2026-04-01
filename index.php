@@ -164,7 +164,25 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
             }
         }
 
-        if (pool.length < 6) continue;
+        if (pool.length < 6) {
+            // Fallback : afficher un message discret sur la card si aucune image n'a pu être chargée
+            const mosaic = document.getElementById('mosaic-' + slug);
+            if (mosaic) {
+                mosaic.innerHTML = '';
+                mosaic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+                mosaic.innerHTML = `<span style="
+                    font-family:'Josefin Sans',sans-serif;
+                    font-size:.6rem;
+                    letter-spacing:.18em;
+                    text-transform:uppercase;
+                    color:rgba(122,120,112,.5);
+                    text-align:center;
+                    padding:1rem;
+                    pointer-events:none;
+                ">Aperçu indisponible</span>`;
+            }
+            continue;
+        }
 
         // Pré-charger
         pool.forEach(url => { const img = new Image(); img.src = url; });
