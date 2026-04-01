@@ -127,6 +127,7 @@ if (!empty($_SESSION['admin_ok'])) {
     window.PIXIV_PER_PAGE    = <?= PIXIV_DEFAULT_PER_PAGE ?>;
     window.PIXIV_INITIAL_TAG = <?= json_encode($characters[0]['tag']) ?>;
     window.PIXIV_PROXY_URL   = '../pixiv-proxy.php';
+    window.PIXIV_EXTRA_PARAMS = 'gallery=<?= htmlspecialchars($slug) ?>';
     <?php if ($admin_defs): ?>
     window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
     <?php endif; ?>
