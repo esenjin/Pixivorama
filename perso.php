@@ -283,7 +283,7 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
                         </div>
                     </div>
                     <div class="gallery-item-actions">
-                        <a href="private/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small">Voir</a>
+                        <a href="private/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small" onclick="event.stopPropagation()">Voir</a>
                         <span class="gallery-chevron" id="chev-pgi-<?= htmlspecialchars($g['slug']) ?>">▾</span>
                     </div>
                 </div>
@@ -347,7 +347,7 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
                         </span>
                     </div>
                     <div class="gallery-item-actions">
-                        <a href="private/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small">Voir</a>
+                        <a href="private/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small" onclick="event.stopPropagation()">Voir</a>
                         <span class="gallery-chevron" id="chev-pgi-<?= htmlspecialchars($g['slug']) ?>">▾</span>
                     </div>
                 </div>

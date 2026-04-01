@@ -386,7 +386,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                             </span>
                         </div>
                         <div class="gallery-item-actions">
-                            <a href="galleries/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small">Voir</a>
+                            <a href="galleries/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small" onclick="event.stopPropagation()">Voir</a>
                             <span class="gallery-chevron" id="chev-<?= htmlspecialchars($g['slug']) ?>">▾</span>
                         </div>
                     </div>
