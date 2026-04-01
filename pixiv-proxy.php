@@ -1,19 +1,20 @@
 <?php
 // ============================================================
 //  pixiv-proxy.php — Proxy serveur vers l'API Pixiv
+//  Inclut un cache fichier côté serveur (TTL configurable).
 // ============================================================
 require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$tag        = trim($_GET['tag']         ?? '');
-$page       = max(1, intval($_GET['page']     ?? 1));
-$per_page   = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
-$order      = $_GET['order']   ?? PIXIV_DEFAULT_ORDER;
-$mode       = $_GET['mode']    ?? PIXIV_DEFAULT_MODE;
-$gallery    = trim($_GET['gallery']    ?? '');
-$period     = trim($_GET['period']     ?? '');
-$free_search = !empty($_GET['free_search']); // true si appelé depuis recherche.php
+$tag         = trim($_GET['tag']         ?? '');
+$page        = max(1, intval($_GET['page']     ?? 1));
+$per_page    = intval($_GET['per_page'] ?? PIXIV_DEFAULT_PER_PAGE);
+$order       = $_GET['order']   ?? PIXIV_DEFAULT_ORDER;
+$mode        = $_GET['mode']    ?? PIXIV_DEFAULT_MODE;
+$gallery     = trim($_GET['gallery']    ?? '');
+$period      = trim($_GET['period']     ?? '');
+$free_search = !empty($_GET['free_search']);
 
 if (!in_array($per_page, [28, 56], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
@@ -26,7 +27,6 @@ if ($tag === '') {
 }
 
 // Vérifie que le tag appartient à une galerie autorisée
-// — en mode recherche libre, toute valeur est acceptée.
 if (!$free_search) {
     $allowed_tags = [];
     if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
@@ -43,6 +43,55 @@ if (!$free_search) {
         echo json_encode(['error' => 'Tag non autorisé.']);
         exit;
     }
+}
+
+// ── Cache fichier ────────────────────────────────────────────
+
+define('CACHE_DIR', __DIR__ . '/cache');
+define('CACHE_TTL', 600); // secondes (10 minutes)
+
+/**
+ * Retourne le chemin du fichier cache pour une clé donnée.
+ */
+function cache_path(string $key): string {
+    return CACHE_DIR . '/' . $key . '.json';
+}
+
+/**
+ * Lit le cache si valide, retourne null sinon.
+ */
+function cache_get(string $key): ?string {
+    $path = cache_path($key);
+    if (!file_exists($path)) return null;
+    if (time() - filemtime($path) > CACHE_TTL) {
+        @unlink($path);
+        return null;
+    }
+    $data = file_get_contents($path);
+    return $data !== false ? $data : null;
+}
+
+/**
+ * Écrit une valeur en cache.
+ */
+function cache_set(string $key, string $value): void {
+    if (!is_dir(CACHE_DIR)) {
+        mkdir(CACHE_DIR, 0755, true);
+        // Protège le dossier contre l'accès direct
+        file_put_contents(CACHE_DIR . '/.htaccess', "Order allow,deny\nDeny from all\n");
+    }
+    file_put_contents(cache_path($key), $value, LOCK_EX);
+}
+
+// Construire la clé de cache (sans free_search ni gallery, qui n'affectent pas la réponse Pixiv)
+$cache_key = hash('sha256', implode('|', [$tag, $page, $per_page, $order, $mode, $period]));
+
+// Servir depuis le cache si disponible
+$cached = cache_get($cache_key);
+if ($cached !== null) {
+    header('X-Cache: HIT');
+    echo $cached;
+    exit;
 }
 
 // ── Date de début selon la période (scd) ──
@@ -119,4 +168,10 @@ foreach ($raw_works as $work) {
     ];
 }
 
-echo json_encode(['works' => $works, 'total' => $total, 'page' => $page, 'perPage' => $per_page]);
+$output = json_encode(['works' => $works, 'total' => $total, 'page' => $page, 'perPage' => $per_page]);
+
+// Mettre en cache uniquement les réponses valides
+cache_set($cache_key, $output);
+
+header('X-Cache: MISS');
+echo $output;
