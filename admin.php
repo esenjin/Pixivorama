@@ -53,9 +53,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($sessid === '') {
             $error = 'Le PHPSESSID ne peut pas être vide.';
         } else {
-            $SETTINGS['phpsessid'] = $sessid;
-            save_settings($SETTINGS);
-            $success = 'PHPSESSID mis à jour.';
+            // Validation : extraire l'userId et interroger Pixiv avant d'enregistrer
+            $userId = null;
+            if (preg_match('/^(\d+)_/', $sessid, $m)) $userId = $m[1];
+
+            if (!$userId) {
+                $error = 'Format de PHPSESSID invalide (userId introuvable avant le « _ »).';
+            } else {
+                $ch = curl_init('https://www.pixiv.net/ajax/user/' . $userId);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_TIMEOUT        => 10,
+                    CURLOPT_HTTPHEADER     => [
+                        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                        'Accept: application/json',
+                        'Accept-Language: en-US,en;q=0.9',
+                        'Referer: https://www.pixiv.net/',
+                        'Cookie: PHPSESSID=' . $sessid,
+                    ],
+                    CURLOPT_SSL_VERIFYPEER => true,
+                ]);
+                $resp      = curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curl_err  = curl_error($ch);
+                curl_close($ch);
+
+                if ($curl_err) {
+                    $error = 'Impossible de joindre Pixiv pour valider le cookie : ' . $curl_err;
+                } elseif ($http_code !== 200) {
+                    $error = 'Pixiv a répondu HTTP ' . $http_code . ' — cookie probablement invalide.';
+                } else {
+                    $pdata = json_decode($resp, true);
+                    if (!$pdata || ($pdata['error'] ?? false)) {
+                        $msg   = $pdata['message'] ?? 'Session expirée ou cookie invalide.';
+                        $error = 'Cookie Pixiv refusé : ' . $msg;
+                    } else {
+                        $username = $pdata['body']['name'] ?? null;
+                        $SETTINGS['phpsessid'] = $sessid;
+                        save_settings($SETTINGS);
+                        $success = 'PHPSESSID mis à jour'
+                            . ($username ? ' — connecté en tant que ' . htmlspecialchars($username) : '')
+                            . '.';
+                    }
+                }
+            }
         }
         $tab = 'session';
     }
@@ -349,16 +391,17 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <span class="cookie-status-text" id="cookieStatusText">Vérification en cours…</span>
         </div>
 
-        <form method="POST">
+        <form method="POST" id="sessidForm">
             <input type="hidden" name="action" value="update_sessid">
             <div class="field">
                 <label for="phpsessid">PHPSESSID</label>
                 <input type="text" id="phpsessid" name="phpsessid"
                        value="<?= htmlspecialchars($settings['phpsessid']) ?>"
-                       placeholder="Votre PHPSESSID Pixiv" required>
+                       placeholder="Votre PHPSESSID Pixiv" required autocomplete="off">
                 <span class="hint">Connectez-vous sur pixiv.net → F12 → Application → Cookies → pixiv.net → PHPSESSID</span>
             </div>
-            <button type="submit" class="btn-primary">Mettre à jour</button>
+            <div id="sessidValidation" style="display:none;margin-bottom:1rem;"></div>
+            <button type="submit" class="btn-primary" id="btnSaveSessid">Mettre à jour</button>
         </form>
     </section>
     <?php endif; ?>
@@ -1371,6 +1414,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
 // ── Vérification cookie (onglet session uniquement) ──
 <?php if ($tab === 'session'): ?>
+
+// Met à jour le badge de statut du cookie actuellement enregistré
 (async function checkCookie() {
     const dot  = document.getElementById('cookieStatusDot');
     const text = document.getElementById('cookieStatusText');
@@ -1391,6 +1436,70 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         text.textContent = 'Impossible de joindre Pixiv pour vérifier le cookie.';
     }
 })();
+
+// Validation du PHPSESSID saisi AVANT soumission du formulaire
+(function () {
+    const form    = document.getElementById('sessidForm');
+    const input   = document.getElementById('phpsessid');
+    const btn     = document.getElementById('btnSaveSessid');
+    const validEl = document.getElementById('sessidValidation');
+    const dot     = document.getElementById('cookieStatusDot');
+    const text    = document.getElementById('cookieStatusText');
+
+    function resetValidation() {
+        validEl.style.display   = 'none';
+        validEl.innerHTML       = '';
+        input.style.borderColor = '';
+    }
+
+    function showResult(ok, message) {
+        validEl.style.display   = '';
+        validEl.className       = ok ? 'alert alert-success' : 'alert alert-error';
+        validEl.textContent     = message;
+        input.style.borderColor = ok ? '#4a9060' : '#c0776a';
+    }
+
+    input.addEventListener('input', resetValidation);
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const sessid = input.value.trim();
+        if (!sessid) return;
+
+        btn.disabled    = true;
+        btn.textContent = 'Vérification…';
+        resetValidation();
+        dot.className    = 'cookie-status-dot';
+        text.textContent = 'Vérification en cours…';
+
+        try {
+            const res  = await fetch('pixiv-check.php?sessid=' + encodeURIComponent(sessid));
+            const data = await res.json();
+
+            if (data.valid) {
+                const who = data.username ? `connecté en tant que ${data.username}` : 'session active';
+                dot.className    = 'cookie-status-dot valid';
+                text.textContent = `Cookie valide — ${who}`;
+                showResult(true, 'Cookie valide' + (data.username ? ' — ' + data.username : '') + '. Enregistrement…');
+                form.submit();
+            } else {
+                dot.className    = 'cookie-status-dot invalid';
+                text.textContent = `Cookie invalide — ${data.reason}`;
+                showResult(false, 'Cookie refusé par Pixiv : ' + data.reason);
+                btn.disabled    = false;
+                btn.textContent = 'Mettre à jour';
+            }
+        } catch {
+            dot.className    = 'cookie-status-dot invalid';
+            text.textContent = 'Impossible de joindre Pixiv.';
+            showResult(false, 'Impossible de joindre Pixiv pour valider le cookie. Réessayez ou vérifiez votre connexion.');
+            btn.disabled    = false;
+            btn.textContent = 'Mettre à jour';
+        }
+    });
+})();
+
 <?php endif; ?>
 
 // ── Dépliage des galeries ──

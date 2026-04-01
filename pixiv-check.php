@@ -2,6 +2,9 @@
 // ============================================================
 //  pixiv-check.php — Vérifie la validité du cookie Pixiv
 //  Appelé en AJAX depuis admin.php (utilisateur connecté).
+//
+//  Sans paramètre  → vérifie PIXIV_PHPSESSID (cookie enregistré)
+//  ?sessid=...     → vérifie le PHPSESSID fourni (validation pré-enregistrement)
 // ============================================================
 
 require_once __DIR__ . '/config.php';
@@ -13,9 +16,9 @@ if (!isset($_SESSION['admin_ok']) && remember_check()) {
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Le PHPSESSID Pixiv est de la forme "12345678_aBcDe..."
-// La partie avant le "_" est l'userId du compte connecté.
-$phpsessid = PIXIV_PHPSESSID;
+// Utiliser le PHPSESSID fourni en paramètre GET si présent,
+// sinon celui déjà enregistré dans la configuration.
+$phpsessid = isset($_GET['sessid']) ? trim($_GET['sessid']) : PIXIV_PHPSESSID;
 $userId    = null;
 
 if (preg_match('/^(\d+)_/', $phpsessid, $m)) {
