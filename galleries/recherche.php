@@ -15,118 +15,6 @@ require_once __DIR__ . '/../config.php';
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Josefin+Sans:wght@200;300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/styles.css">
     <link rel="icon" type="image/png" href="../assets/logo.png">
-    <style>
-        /* ── Champ de recherche libre ── */
-        .search-wrap {
-            display: flex;
-            justify-content: center;
-            padding: 2rem 2rem 0;
-        }
-        .search-form {
-            display: flex;
-            align-items: stretch;
-            width: 100%;
-            max-width: 560px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            transition: border-color .25s;
-        }
-        .search-form:focus-within {
-            border-color: var(--accent-dim);
-        }
-        .search-input {
-            flex: 1;
-            background: var(--surface);
-            border: none;
-            color: var(--text);
-            font-family: 'Josefin Sans', sans-serif;
-            font-size: .85rem;
-            font-weight: 300;
-            letter-spacing: .06em;
-            padding: .8rem 1.1rem;
-            outline: none;
-            min-width: 0;
-        }
-        .search-input::placeholder {
-            color: var(--text-muted);
-            opacity: .7;
-        }
-        .search-btn {
-            background: rgba(200,169,126,.08);
-            border: none;
-            border-left: 1px solid var(--border);
-            color: var(--accent);
-            font-family: 'Josefin Sans', sans-serif;
-            font-size: .65rem;
-            font-weight: 400;
-            letter-spacing: .2em;
-            text-transform: uppercase;
-            padding: .8rem 1.4rem;
-            cursor: pointer;
-            transition: background .2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .search-btn:hover { background: rgba(200,169,126,.16); }
-
-        .search-hint {
-            text-align: center;
-            font-size: .6rem;
-            color: var(--text-muted);
-            letter-spacing: .08em;
-            padding: .6rem 2rem 0;
-        }
-        .search-hint em {
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic;
-            font-size: .85rem;
-            color: var(--text-muted);
-        }
-
-        /* Tag actif */
-        .active-tag-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: .6rem;
-            padding: 1rem 2rem 0;
-            font-size: .65rem;
-            letter-spacing: .2em;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-        .active-tag-label {
-            color: var(--accent);
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.15rem;
-            font-style: italic;
-            font-weight: 300;
-            letter-spacing: .04em;
-            text-transform: none;
-        }
-
-        /* État vide initial */
-        .search-empty {
-            text-align: center;
-            padding: 5rem 2rem;
-            color: var(--text-muted);
-            grid-column: 1 / -1;
-        }
-        .search-empty-icon {
-            font-size: 2.2rem;
-            display: block;
-            margin-bottom: 1.2rem;
-            opacity: .25;
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic;
-        }
-        .search-empty p {
-            font-size: .68rem;
-            letter-spacing: .2em;
-            text-transform: uppercase;
-        }
-    </style>
 </head>
 <body>
 
@@ -232,6 +120,7 @@ let currentOrder   = 'popular_d';
 let currentMode    = 'safe'; // 'safe' | 'r18' | 'all'
 let currentPeriod  = '';
 let loading        = false;
+let _popStateInProgress = false; // évite de pousser une entrée lors d'un popstate
 
 const gallery        = document.getElementById('gallery');
 const statusBar      = document.getElementById('statusBar');
@@ -243,6 +132,83 @@ const activeTagBar   = document.getElementById('activeTagBar');
 const activeTagLabel = document.getElementById('activeTagLabel');
 const searchInput    = document.getElementById('searchInput');
 const searchBtn      = document.getElementById('searchBtn');
+
+// ── Gestion de l'URL ──
+
+/**
+ * Pousse l'état courant dans l'historique du navigateur.
+ * Appelé après chaque changement de tag, page ou filtre.
+ */
+function pushState() {
+    if (_popStateInProgress) return;
+    const params = new URLSearchParams();
+    if (currentTag)                        params.set('q',       currentTag);
+    if (currentPage > 1)                   params.set('page',    currentPage);
+    if (currentOrder !== 'popular_d')      params.set('order',   currentOrder);
+    if (currentMode  !== 'safe')           params.set('mode',    currentMode);
+    if (currentPeriod)                     params.set('period',  currentPeriod);
+    if (currentPerPage !== 28)             params.set('per',     currentPerPage);
+    const url = params.toString() ? '?' + params.toString() : location.pathname;
+    history.pushState({ tag: currentTag, page: currentPage, order: currentOrder,
+                        mode: currentMode, period: currentPeriod, perPage: currentPerPage }, '', url);
+}
+
+/**
+ * Applique un état (depuis l'URL ou un événement popstate) sans repousser d'entrée.
+ */
+function applyState(state) {
+    _popStateInProgress = true;
+
+    currentTag     = state.tag     || '';
+    currentPage    = state.page    || 1;
+    currentOrder   = state.order   || 'popular_d';
+    currentMode    = state.mode    || 'safe';
+    currentPeriod  = state.period  || '';
+    currentPerPage = state.perPage || 28;
+
+    // Sync des pills
+    syncPill('#orderPicker',   currentOrder);
+    syncPill('#perPagePicker', String(currentPerPage));
+    syncPill('#contentPicker', currentMode);
+
+    if (currentTag) {
+        searchInput.value          = currentTag;
+        controlsBar.style.display  = '';
+        statusBar.style.display    = '';
+        activeTagBar.style.display = '';
+        activeTagLabel.textContent = currentTag;
+
+        if (currentOrder === 'popular_d') buildPeriodPicker();
+        else removePeriodPicker();
+
+        load(currentTag, currentPage);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    _popStateInProgress = false;
+}
+
+function syncPill(containerSelector, value) {
+    document.querySelectorAll(containerSelector + ' .pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === value);
+    });
+}
+
+// Retour/avance navigateur
+window.addEventListener('popstate', e => {
+    if (e.state) applyState(e.state);
+    else {
+        // Retour à l'état vide (page chargée sans paramètres)
+        currentTag = '';
+        gallery.innerHTML = `<div class="search-empty" id="emptyState">
+            <span class="search-empty-icon">✦</span><p>Entrez un tag pour commencer</p></div>`;
+        controlsBar.style.display  = 'none';
+        statusBar.style.display    = 'none';
+        activeTagBar.style.display = 'none';
+        pagination.style.display   = 'none';
+        searchInput.value          = '';
+    }
+});
 
 // ── Démarrer une recherche ──
 function startSearch() {
@@ -259,6 +225,7 @@ function startSearch() {
     activeTagLabel.textContent = tag;
 
     if (currentOrder === 'popular_d') buildPeriodPicker();
+    pushState();
     load(tag, 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -376,6 +343,7 @@ function updatePagination(page, total, perPage) {
             const p = parseInt(btn.dataset.page, 10);
             if (!isNaN(p) && p !== currentPage) {
                 currentPage = p;
+                pushState();
                 load(currentTag, currentPage);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
@@ -416,7 +384,10 @@ function escHtml(str) {
 }
 function resetPage() {
     currentPage = 1;
-    if (currentTag) load(currentTag, currentPage);
+    if (currentTag) {
+        pushState();
+        load(currentTag, currentPage);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -500,6 +471,26 @@ window.addEventListener('scroll', () => {
     btnToTop.classList.toggle('visible', window.scrollY > 400);
 }, { passive: true });
 btnToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+// ── Restauration depuis l'URL au chargement ──
+(function restoreFromURL() {
+    const params = new URLSearchParams(location.search);
+    const tag = params.get('q');
+    if (!tag) return;
+
+    const state = {
+        tag,
+        page:    parseInt(params.get('page')   || '1', 10),
+        order:   params.get('order')  || 'popular_d',
+        mode:    params.get('mode')   || 'safe',
+        period:  params.get('period') || '',
+        perPage: parseInt(params.get('per') || '28', 10),
+    };
+
+    // Remplacer l'entrée courante de l'historique avec l'état complet
+    history.replaceState(state, '', location.href);
+    applyState(state);
+})();
 </script>
 
 </body>
