@@ -18,7 +18,7 @@ function load_settings(): array {
         if (is_array($data)) return $data;
     }
     return [
-        'phpsessid'  => '12345678_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdef', // Valeur par défaut (à remplacer par l'utilisateur)
+        'phpsessid'  => '12345678_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdef',
         'admin_hash' => password_hash('admin', PASSWORD_DEFAULT),
     ];
 }
@@ -30,23 +30,76 @@ function save_settings(array $data): bool {
 $SETTINGS = load_settings();
 define('PIXIV_PHPSESSID', $SETTINGS['phpsessid']);
 
-// ── Remember-me token ────────────────────────────────────────
+// ── Remember-me (multi-appareils) ───────────────────────────
+//
+//  Chaque appareil reçoit un token distinct. Ils sont stockés
+//  sous la clé "remember_tokens" dans settings.json :
+//
+//    "remember_tokens": {
+//      "<sha256 du token>": <timestamp d'expiration Unix>
+//    }
+//
+//  Un maximum de REMEMBER_MAX_TOKENS tokens simultanés est
+//  conservé ; les plus anciens sont évincés au-delà.
+//  Les tokens expirés sont purgés à chaque lecture/écriture.
 
-define('REMEMBER_COOKIE', 'pxv_rm');
-define('REMEMBER_TTL',    7 * 24 * 3600); // 7 jours
+define('REMEMBER_COOKIE',     'pxv_rm');
+define('REMEMBER_TTL',        7 * 24 * 3600); // 7 jours
+define('REMEMBER_MAX_TOKENS', 10);            // appareils simultanés max
 
 /**
- * Génère et enregistre un token de reconnexion.
+ * Retourne le tableau des tokens valides (expirés purgés).
+ * Structure : [ sha256_hash => expiry_timestamp, ... ]
+ */
+function remember_tokens(): array {
+    global $SETTINGS;
+    $tokens = $SETTINGS['remember_tokens'] ?? [];
+
+    // Compatibilité avec l'ancien format à token unique
+    if (isset($SETTINGS['remember_hash']) && isset($SETTINGS['remember_exp'])) {
+        if (time() < $SETTINGS['remember_exp']) {
+            $tokens[$SETTINGS['remember_hash']] = $SETTINGS['remember_exp'];
+        }
+        unset($SETTINGS['remember_hash'], $SETTINGS['remember_exp']);
+    }
+
+    // Purger les tokens expirés
+    $now = time();
+    foreach ($tokens as $hash => $exp) {
+        if ($now >= $exp) unset($tokens[$hash]);
+    }
+
+    return $tokens;
+}
+
+/**
+ * Génère et enregistre un token de reconnexion pour l'appareil courant.
  * Pose le cookie côté client, stocke le hash côté serveur.
+ * Évince les tokens les plus anciens si la limite est dépassée.
  */
 function remember_set(): void {
     global $SETTINGS;
-    $token = bin2hex(random_bytes(32)); // 64 chars hex
-    $SETTINGS['remember_hash'] = hash('sha256', $token);
-    $SETTINGS['remember_exp']  = time() + REMEMBER_TTL;
+
+    $token   = bin2hex(random_bytes(32)); // 64 chars hex
+    $hash    = hash('sha256', $token);
+    $expiry  = time() + REMEMBER_TTL;
+
+    $tokens = remember_tokens();
+    $tokens[$hash] = $expiry;
+
+    // Limiter le nombre de tokens simultanés : évincer les plus anciens
+    if (count($tokens) > REMEMBER_MAX_TOKENS) {
+        asort($tokens); // tri croissant par timestamp d'expiration
+        $tokens = array_slice($tokens, -REMEMBER_MAX_TOKENS, null, true);
+    }
+
+    $SETTINGS['remember_tokens'] = $tokens;
+    // Supprimer les anciennes clés format v1 si elles traînent
+    unset($SETTINGS['remember_hash'], $SETTINGS['remember_exp']);
     save_settings($SETTINGS);
+
     setcookie(REMEMBER_COOKIE, $token, [
-        'expires'  => time() + REMEMBER_TTL,
+        'expires'  => $expiry,
         'path'     => '/',
         'secure'   => isset($_SERVER['HTTPS']),
         'httponly' => true,
@@ -55,29 +108,45 @@ function remember_set(): void {
 }
 
 /**
- * Vérifie le cookie de reconnexion.
- * Retourne true et régénère un nouveau token si valide.
+ * Vérifie le cookie de reconnexion de l'appareil courant.
+ * Retourne true et effectue une rotation du token si valide.
  */
 function remember_check(): bool {
     global $SETTINGS;
+
     $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
     if ($token === '') return false;
-    $stored_hash = $SETTINGS['remember_hash'] ?? '';
-    $stored_exp  = $SETTINGS['remember_exp']  ?? 0;
-    if ($stored_hash === '' || time() > $stored_exp) return false;
-    if (!hash_equals($stored_hash, hash('sha256', $token))) return false;
-    // Token valide → rotation (évite le vol de token par replay)
-    remember_set();
+
+    $hash   = hash('sha256', $token);
+    $tokens = remember_tokens();
+
+    if (!isset($tokens[$hash])) return false;
+
+    // Rotation : supprimer l'ancien token, en émettre un nouveau
+    unset($tokens[$hash]);
+    $SETTINGS['remember_tokens'] = $tokens;
+    save_settings($SETTINGS);
+
+    remember_set(); // pose un nouveau cookie + enregistre un nouveau hash
     return true;
 }
 
 /**
- * Supprime le token de reconnexion (déconnexion).
+ * Révoque le token de l'appareil courant (déconnexion).
+ * Les tokens des autres appareils restent intacts.
  */
 function remember_clear(): void {
     global $SETTINGS;
-    unset($SETTINGS['remember_hash'], $SETTINGS['remember_exp']);
-    save_settings($SETTINGS);
+
+    $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    if ($token !== '') {
+        $hash   = hash('sha256', $token);
+        $tokens = remember_tokens();
+        unset($tokens[$hash]);
+        $SETTINGS['remember_tokens'] = $tokens;
+        save_settings($SETTINGS);
+    }
+
     setcookie(REMEMBER_COOKIE, '', [
         'expires'  => time() - 3600,
         'path'     => '/',
@@ -142,15 +211,11 @@ function create_gallery_php(string $slug): bool {
     $template = GALLERIES_DIR . '/_template.php';
     $dest     = GALLERIES_DIR . '/' . $slug . '.php';
     if (!file_exists($template)) {
-        // Génère un template minimal si absent
-        $content = '<?php require_once __DIR__ . \'/_template.php\'; ?>';
-        // En réalité on crée un stub autonome
         $content = "<?php\n// Auto-generated by Pixivorama\n"
             . "require_once __DIR__ . '/../config.php';\n"
             . "\$slug    = basename(__FILE__, '.php');\n"
             . "\$gallery = load_gallery(\$slug);\n"
             . "if (!\$gallery) { http_response_code(404); echo '404'; exit; }\n"
-            . "// Inclure le template de rendu\n"
             . "include __DIR__ . '/_template.php';\n";
         return file_put_contents($dest, $content) !== false;
     }
@@ -158,9 +223,7 @@ function create_gallery_php(string $slug): bool {
 }
 
 /**
- * Retourne la liste de toutes les galeries sous forme de tableau
- * ['slug' => ..., 'title' => ..., 'characters' => [...]]
- * triées par ordre alphabétique de slug.
+ * Retourne la liste de toutes les galeries.
  */
 function list_galleries(): array {
     if (!is_dir(GALLERIES_DIR)) return [];
@@ -186,10 +249,6 @@ define('PIXIV_AI_TYPE',          1);
 
 // ── Préférences d'affichage admin ───────────────────────────
 
-/**
- * Retourne les préférences de galerie pour l'admin connecté.
- * Fusionne les valeurs sauvegardées avec les valeurs par défaut publiques.
- */
 function get_admin_gallery_defaults(array $settings): array {
     $saved = $settings['gallery_defaults'] ?? [];
     return [
