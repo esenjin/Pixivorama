@@ -930,6 +930,127 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     }
     </script>
 
+    <!-- ══ Indicateur de santé des galeries ══ -->
+    <section class="admin-section" style="margin-top:1.5rem;">
+        <p class="section-title">Santé des galeries</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Vérifie la synchronisation des fichiers <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
+            avec leur template, et teste si Pixiv retourne des résultats pour le premier tag de chaque galerie.
+        </p>
+
+        <!-- Tableau de résultats -->
+        <div id="healthResults" style="display:none;margin-bottom:1.2rem;">
+            <div class="health-header">
+                <span>Galerie</span>
+                <span>Fichier PHP</span>
+                <span>Pixiv</span>
+            </div>
+            <div id="healthList"></div>
+        </div>
+
+        <!-- Résumé -->
+        <div id="healthSummary" style="display:none;" class="alert alert-success"></div>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+            <button class="btn-primary" id="btnHealthCheck" style="margin-top:0;" onclick="runHealthCheck()">
+                Vérifier la santé
+            </button>
+            <span id="healthLoading" style="display:none;font-size:.65rem;color:var(--text-muted);letter-spacing:.12em;">
+                Vérification en cours…
+            </span>
+        </div>
+    </section>
+
+    <script>
+    // ── Health check ──
+    async function runHealthCheck() {
+        const btn     = document.getElementById('btnHealthCheck');
+        const loading = document.getElementById('healthLoading');
+        const results = document.getElementById('healthResults');
+        const list    = document.getElementById('healthList');
+        const summary = document.getElementById('healthSummary');
+
+        btn.disabled     = true;
+        loading.style.display = '';
+        results.style.display = 'none';
+        summary.style.display = 'none';
+
+        try {
+            const res  = await fetch('fonctions/regen.php?health=1');
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Erreur inconnue');
+
+            const SYNC = {
+                ok:          { icon: '✓', color: '#5db87a', label: 'Synchronisé' },
+                outdated:    { icon: '⚠', color: '#c8a97e', label: 'À régénérer' },
+                missing:     { icon: '✗', color: '#c0776a', label: 'Manquant' },
+                no_template: { icon: '✗', color: '#c0776a', label: 'Template absent' },
+            };
+            const PIXIV = {
+                ok:      { icon: '✓', color: '#5db87a' },
+                empty:   { icon: '○', color: '#c8a97e' },
+                error:   { icon: '✗', color: '#c0776a' },
+                skipped: { icon: '—', color: 'var(--text-muted)' },
+            };
+
+            list.innerHTML = data.results.map(r => {
+                const s = SYNC[r.sync_status]  || SYNC.missing;
+                const p = PIXIV[r.pixiv_status] || PIXIV.skipped;
+
+                const syncAge = r.dest_mtime && r.tpl_mtime && r.sync_status === 'outdated'
+                    ? ` <span style="font-size:.55rem;opacity:.7;">(+${fmtAge(r.tpl_mtime - r.dest_mtime)})</span>`
+                    : '';
+
+                return `<div class="health-row">
+                    <div class="health-row-name">
+                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.95rem;color:var(--text);">${escH(r.title)}</span>
+                        <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.35rem;">${escH(r.slug)}</code>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.4rem;">
+                        <span style="color:${s.color};font-size:.75rem;">${s.icon}</span>
+                        <span style="font-size:.62rem;color:${s.color};">${s.label}${syncAge}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.4rem;">
+                        <span style="color:${p.color};font-size:.75rem;">${p.icon}</span>
+                        <span style="font-size:.62rem;color:${p.color};">${escH(r.pixiv_note || r.pixiv_status)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            results.style.display = '';
+
+            const countSync   = data.results.filter(r => r.sync_status  === 'ok').length;
+            const countPixiv  = data.results.filter(r => r.pixiv_status === 'ok').length;
+            const countTotal  = data.results.length;
+            const hasIssues   = countSync < countTotal || data.results.some(r => r.pixiv_status === 'error');
+
+            summary.className   = hasIssues ? 'alert alert-error' : 'alert alert-success';
+            summary.textContent = `${countTotal} galerie${countTotal > 1 ? 's' : ''} · `
+                + `${countSync}/${countTotal} fichiers synchronisés · `
+                + `${countPixiv} Pixiv OK`;
+            summary.style.display = '';
+
+        } catch (err) {
+            summary.className   = 'alert alert-error';
+            summary.textContent = 'Erreur : ' + err.message;
+            summary.style.display = '';
+        } finally {
+            btn.disabled          = false;
+            loading.style.display = 'none';
+        }
+    }
+
+    function fmtAge(seconds) {
+        if (seconds < 60)   return seconds + 's';
+        if (seconds < 3600) return Math.round(seconds / 60) + 'min';
+        return Math.round(seconds / 3600) + 'h';
+    }
+
+    function escH(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+
     <!-- ══ Import / Export ══ -->
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Sauvegardes & Import</p>
@@ -1353,6 +1474,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
 </div><!-- /.admin-wrap -->
 
+<button class="admin-btn-to-top" id="adminBtnToTop" title="Retour en haut">↑</button>
+
 <script>
 // ════════════════════════════════════════════════════════════
 //  MODALE CUSTOM (remplace alert / confirm natifs)
@@ -1715,6 +1838,15 @@ async function confirmDelete(slug, title) {
     document.getElementById('deleteSlug').value = slug;
     document.getElementById('deleteForm').submit();
 }
+// ── Bouton retour en haut ──
+(function () {
+    const btn = document.getElementById('adminBtnToTop');
+    if (!btn) return;
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', window.scrollY > 400);
+    }, { passive: true });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
 </script>
 
 </body>

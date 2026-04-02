@@ -470,6 +470,8 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
 
 </div><!-- /.admin-wrap -->
 
+<button class="admin-btn-to-top" id="adminBtnToTop" title="Retour en haut">↑</button>
+
 <script>
 // ── Modale custom (identique à admin.php) ──
 (function () {
@@ -622,6 +624,15 @@ async function confirmDelete(slug, title) {
     document.getElementById('deleteSlug').value = slug;
     document.getElementById('deleteForm').submit();
 }
+// ── Bouton retour en haut ──
+(function () {
+    const btn = document.getElementById('adminBtnToTop');
+    if (!btn) return;
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', window.scrollY > 400);
+    }, { passive: true });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
 </script>
 
 </body>
