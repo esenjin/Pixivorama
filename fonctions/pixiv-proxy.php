@@ -150,8 +150,42 @@ if ($http_code !== 200) { http_response_code(502); echo json_encode(['error' => 
 $data = json_decode($response, true);
 if (!$data || ($data['error'] ?? false)) { http_response_code(502); echo json_encode(['error' => 'Réponse invalide de Pixiv.']); exit; }
 
-$raw_works = array_slice($data['body']['illustManga']['data'] ?? [], 0, $per_page);
-$total     = $data['body']['illustManga']['total'] ?? 0;
+// Tags indiquant une illustration générée par IA (filtre complémentaire à ai_type)
+// Certains artistes ne cochent pas la case IA lors de la publication.
+define('AI_TAGS', [
+    'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
+    'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
+    'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
+]);
+
+/**
+ * Retourne true si l'œuvre comporte un tag IA connu.
+ */
+function has_ai_tag(array $work): bool {
+    $workTags = $work['tags'] ?? [];
+    foreach ($workTags as $t) {
+        // Les tags Pixiv peuvent être une chaîne ou un tableau ['tag'=>…,'romaji'=>…]
+        $tagName = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
+        if (in_array($tagName, AI_TAGS, true)) return true;
+    }
+    return false;
+}
+
+$raw_all   = $data['body']['illustManga']['data'] ?? [];
+$total_raw = $data['body']['illustManga']['total'] ?? 0;
+
+// Filtrer les œuvres IA (ai_type + tags explicites)
+$filtered = array_values(array_filter($raw_all, function($work) {
+    if (($work['aiType'] ?? 0) >= 2) return false;
+    if (has_ai_tag($work)) return false;
+    return true;
+}));
+
+$raw_works = array_slice($filtered, 0, $per_page);
+// Ajuster le total estimé proportionnellement au ratio de filtrage
+$total = ($total_raw > 0 && count($raw_all) > 0)
+    ? (int) round($total_raw * count($filtered) / count($raw_all))
+    : count($filtered);
 
 $works = [];
 foreach ($raw_works as $work) {

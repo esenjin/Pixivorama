@@ -209,12 +209,40 @@ if (!$data || ($data['error'] ?? false)) {
 $works = [];
 $total = 0;
 
+// Tags indiquant une illustration générée par IA (filtre complémentaire)
+if (!defined('AI_TAGS')) {
+    define('AI_TAGS', [
+        'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
+        'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
+        'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
+    ]);
+}
+
+if (!function_exists('has_ai_tag')) {
+    function has_ai_tag(array $work): bool {
+        $workTags = $work['tags'] ?? [];
+        foreach ($workTags as $t) {
+            $tagName = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
+            if (in_array($tagName, AI_TAGS, true)) return true;
+        }
+        return false;
+    }
+}
+
 switch ($type) {
 
     case 'tag':
-        $raw   = $data['body']['illustManga']['data'] ?? [];
-        $total = $data['body']['illustManga']['total'] ?? 0;
-        $raw   = array_slice($raw, 0, $per_page);
+        $raw_all   = $data['body']['illustManga']['data'] ?? [];
+        $total_raw = $data['body']['illustManga']['total'] ?? 0;
+        $filtered  = array_values(array_filter($raw_all, function($w) {
+            if (($w['aiType'] ?? 0) >= 2) return false;
+            if (has_ai_tag($w)) return false;
+            return true;
+        }));
+        $raw   = array_slice($filtered, 0, $per_page);
+        $total = ($total_raw > 0 && count($raw_all) > 0)
+            ? (int) round($total_raw * count($filtered) / count($raw_all))
+            : count($filtered);
         foreach ($raw as $w) {
             $works[] = normalise_work($w);
         }
@@ -237,8 +265,9 @@ switch ($type) {
         $raw   = $data['body']['works'] ?? [];
         $total = $data['body']['total'] ?? 0;
         foreach ($raw as $w) {
-            // Les bookmarks peuvent contenir des entrées nulles (œuvres supprimées)
             if (!is_array($w) || empty($w['id'])) continue;
+            if (($w['aiType'] ?? 0) >= 2) continue;
+            if (has_ai_tag($w)) continue;
             $works[] = normalise_work($w);
         }
         break;
@@ -249,6 +278,8 @@ switch ($type) {
         $total = $data['body']['total'] ?? count($raw);
         foreach ($raw as $w) {
             if (!is_array($w) || empty($w['id'])) continue;
+            if (($w['aiType'] ?? 0) >= 2) continue;
+            if (has_ai_tag($w)) continue;
             $works[] = normalise_work($w);
         }
         break;
@@ -264,9 +295,11 @@ switch ($type) {
         $ids = $data['body']['page']['ids'] ?? [];
         foreach ($ids as $id) {
             $key = (string)$id;
-            if (isset($thumbMap[$key])) {
-                $works[] = normalise_work($thumbMap[$key]);
-            }
+            if (!isset($thumbMap[$key])) continue;
+            $w = $thumbMap[$key];
+            if (($w['aiType'] ?? 0) >= 2) continue;
+            if (has_ai_tag($w)) continue;
+            $works[] = normalise_work($w);
         }
         $total = count($works);
         break;
