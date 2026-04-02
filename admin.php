@@ -788,7 +788,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         btn.textContent = 'Analyse…';
 
         try {
-            const res  = await fetch('regen.php?dry=1');
+            const res  = await fetch('fonctions/regen.php?dry=1');
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
@@ -844,7 +844,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         const pct         = document.getElementById('regenPercent');
         const statusLabel = document.getElementById('regenStatusLabel');
 
-        const res    = await fetch('regen.php', { method: 'POST', body: new URLSearchParams({ action: 'regen' }) });
+        const res    = await fetch('fonctions/regen.php', { method: 'POST', body: new URLSearchParams({ action: 'regen' }) });
         const reader  = res.body.getReader();
         const decoder = new TextDecoder();
         let   buffer  = '';
@@ -1058,7 +1058,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     async function loadSavesList() {
         const container = document.getElementById('savesList');
         try {
-            const res  = await fetch('backup.php?action=list');
+            const res  = await fetch('fonctions/backup.php?action=list');
             const data = await res.json();
             if (!data.saves || !data.saves.length) {
                 container.innerHTML = '<p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;">Aucune sauvegarde pour l\'instant.</p>';
@@ -1087,7 +1087,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         btn.disabled = true;
         const fd = new FormData();
         fd.append('action', 'delete'); fd.append('file', file);
-        const res  = await fetch('backup.php', { method: 'POST', body: fd });
+        const res  = await fetch('fonctions/backup.php', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.ok) { loadSavesList(); refreshImportSaveList(); }
         else _modal('Erreur : ' + data.error);
@@ -1101,7 +1101,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         res_el.style.display = 'none';
         try {
             const fd = new FormData(); fd.append('action', 'export');
-            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const res  = await fetch('fonctions/backup.php', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
             res_el.className = 'alert alert-success';
@@ -1123,7 +1123,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         const container = document.getElementById('importSaveList');
         const empty     = document.getElementById('importSaveEmpty');
         try {
-            const res  = await fetch('backup.php?action=list');
+            const res  = await fetch('fonctions/backup.php?action=list');
             const data = await res.json();
             if (!data.saves || !data.saves.length) {
                 container.innerHTML = '';
@@ -1164,7 +1164,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     async function runAnalysis(fd, sourceName) {
         document.getElementById('importAnalysis').style.display = 'none';
         try {
-            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const res  = await fetch('fonctions/backup.php', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
             analyzedSource = sourceName;
@@ -1288,7 +1288,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         }
 
         try {
-            const res  = await fetch('backup.php', { method: 'POST', body: fd });
+            const res  = await fetch('fonctions/backup.php', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
@@ -1330,7 +1330,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         fd.append('action', 'restore');
         fd.append('savefile', file);
 
-        const res  = await fetch('backup.php', { method: 'POST', body: fd });
+        const res  = await fetch('fonctions/backup.php', { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.error) { _modal('Erreur : ' + data.error); return; }
@@ -1420,7 +1420,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     const dot  = document.getElementById('cookieStatusDot');
     const text = document.getElementById('cookieStatusText');
     try {
-        const res  = await fetch('pixiv-check.php');
+        const res  = await fetch('fonctions/pixiv-check.php');
         const data = await res.json();
         if (data.valid) {
             dot.className    = 'cookie-status-dot valid';
@@ -1474,7 +1474,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         text.textContent = 'Vérification en cours…';
 
         try {
-            const res  = await fetch('pixiv-check.php?sessid=' + encodeURIComponent(sessid));
+            const res  = await fetch('fonctions/pixiv-check.php?sessid=' + encodeURIComponent(sessid));
             const data = await res.json();
 
             if (data.valid) {

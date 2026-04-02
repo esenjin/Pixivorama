@@ -141,7 +141,7 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
         // Charger tous les tags EN PARALLÈLE
         const results = await Promise.all(chosen.map(async tag => {
             try {
-                const res  = await fetch(`pixiv-proxy.php?tag=${encodeURIComponent(tag)}&page=1&per_page=28&order=popular_d&mode=safe&gallery=${encodeURIComponent(slug)}`);
+                const res  = await fetch(`fonctions/pixiv-proxy.php?tag=${encodeURIComponent(tag)}&page=1&per_page=28&order=popular_d&mode=safe&gallery=${encodeURIComponent(slug)}`);
                 const data = await res.json();
                 if (!data.works?.length) return [];
                 return data.works

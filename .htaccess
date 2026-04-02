@@ -4,8 +4,8 @@
 
 # ── Protections fichiers sensibles ──────────────────────────
 
-# Protège config.php et settings.json
-<FilesMatch "^(config\.php|settings\.json)$">
+# Protège config.php, auth.php et settings.json
+<FilesMatch "^(config\.php|auth\.php|settings\.json)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
@@ -21,6 +21,12 @@
     Order allow,deny
     Deny from all
 </FilesMatch>
+
+# Bloque l'accès direct au dossier includes/ (fichiers utilitaires PHP)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^includes/ - [F,L]
+</IfModule>
 
 # ── Réécriture et gestion des erreurs ───────────────────────
 
