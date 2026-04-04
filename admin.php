@@ -735,7 +735,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         <form method="POST">
             <input type="hidden" name="action" value="update_gallery_defaults">
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.4rem;">
+            <div class="admin-prefs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.4rem;">
 
                 <div class="field" style="margin-bottom:0;">
                     <label>Tri par défaut</label>

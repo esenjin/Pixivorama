@@ -533,9 +533,25 @@
 #createForm .field { margin-bottom: 0; }
 
 /* Responsive onglets */
-@media (max-width: 480px) {
-    .admin-tabs { overflow-x: auto; }
-    .admin-tab  { padding: .65rem .9rem; font-size: .6rem; }
+@media (max-width: 560px) {
+    .admin-tabs {
+        flex-wrap: wrap;
+        border-bottom: none;
+        gap: 4px;
+        margin-bottom: 1.5rem;
+    }
+    .admin-tab {
+        padding: .55rem .85rem;
+        font-size: .58rem;
+        border: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 0;
+    }
+    .admin-tab.active {
+        border-color: var(--accent);
+        background: rgba(200,169,126,.07);
+    }
 }
 
 /* Responsive header admin */
@@ -921,4 +937,20 @@
 /* Responsive */
 @media (max-width: 520px) {
     .blocked-tag-row { padding: .3rem .4rem .3rem .65rem; }
+}
+
+
+/* ── Responsive liste des galeries (mobile) ── */
+@media (max-width: 560px) {
+    .gallery-item-header {
+        flex-wrap: wrap;
+        gap: .5rem .75rem;
+        align-items: flex-start;
+    }
+    /* Les boutons passent sur leur propre ligne en-dessous du titre */
+    .gallery-item-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
 }
