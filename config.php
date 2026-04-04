@@ -13,7 +13,7 @@
 define('SETTINGS_FILE', __DIR__ . '/settings.json');
 define('GALLERIES_DIR', __DIR__ . '/galleries');
 
-define('APP_VERSION', '1.4.0');
+define('APP_VERSION', '1.4.1');
 
 // ── Constantes Pixiv ────────────────────────────────────────
 
