@@ -465,12 +465,14 @@
     letter-spacing: .15em;
     text-transform: uppercase;
     color: var(--text-muted);
+    background: transparent;
     border: 1px solid var(--border);
     padding: .3rem .7rem;
     border-radius: var(--radius);
     text-decoration: none;
     transition: color .2s, border-color .2s;
     line-height: 1;
+    cursor: pointer;
 }
 .btn-small:hover { color: var(--accent); border-color: var(--accent-dim); }
 

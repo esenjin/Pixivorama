@@ -348,6 +348,8 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
                     </div>
                     <div class="gallery-item-actions">
                         <a href="private/<?= htmlspecialchars($g['slug']) ?>.php" target="_blank" class="btn-small" onclick="event.stopPropagation()">Voir</a>
+                        <button class="btn-small" title="Rendre publique"
+                                onclick="event.stopPropagation();confirmMove('<?= htmlspecialchars($g['slug'], ENT_QUOTES) ?>', '<?= htmlspecialchars($g['title'], ENT_QUOTES) ?>', 'to_public')">→ Publique</button>
                         <span class="gallery-chevron" id="chev-pgi-<?= htmlspecialchars($g['slug']) ?>">▾</span>
                     </div>
                 </div>
@@ -624,6 +626,37 @@ async function confirmDelete(slug, title) {
     document.getElementById('deleteSlug').value = slug;
     document.getElementById('deleteForm').submit();
 }
+// ── Déplacement galerie privée → publique ──
+async function confirmMove(slug, title, direction) {
+    const detail = direction === 'to_public'
+        ? 'La galerie sera déplacée vers les galeries publiques et accessible à tous les visiteurs.'
+        : "La galerie sera déplacée vers l'espace perso et ne sera plus accessible aux visiteurs.";
+    const label = direction === 'to_public' ? 'Rendre publique' : "Déplacer vers l'espace privé";
+    const ok = await _modal(
+        `<strong>${label}</strong><br><br>`
+        + `Galerie : <em>${title}</em><br><br>`
+        + detail,
+        { confirm: true }
+    );
+    if (!ok) return;
+
+    const fd = new FormData();
+    fd.append('direction', direction);
+    fd.append('slug', slug);
+    try {
+        const res  = await fetch('fonctions/move-gallery.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.error) { await _modal('Erreur : ' + data.error); return; }
+        location.href = 'perso.php?msg=' + encodeURIComponent(
+            direction === 'to_public'
+                ? `Galerie « ${title} » rendue publique.`
+                : `Galerie « ${title} » déplacée vers l'espace privé.`
+        ) + '&mt=success';
+    } catch {
+        await _modal('Erreur réseau lors du déplacement.');
+    }
+}
+
 // ── Bouton retour en haut ──
 (function () {
     const btn = document.getElementById('adminBtnToTop');
