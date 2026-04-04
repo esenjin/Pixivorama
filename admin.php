@@ -408,9 +408,19 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <input type="hidden" name="action" value="update_sessid">
             <div class="field">
                 <label for="phpsessid">PHPSESSID</label>
-                <input type="text" id="phpsessid" name="phpsessid"
-                       value="<?= htmlspecialchars($settings['phpsessid']) ?>"
-                       placeholder="Votre PHPSESSID Pixiv" required autocomplete="off">
+                <div style="position:relative;display:flex;align-items:center;">
+                    <input type="password" id="phpsessid" name="phpsessid"
+                        value="<?= htmlspecialchars($settings['phpsessid']) ?>"
+                        placeholder="Votre PHPSESSID Pixiv" required autocomplete="off"
+                        style="padding-right:3rem;">
+                    <button type="button" id="toggleSessid" title="Afficher / masquer"
+                            onclick="toggleSessidVisibility()"
+                            style="position:absolute;right:.6rem;background:none;border:none;
+                                cursor:pointer;color:var(--text-muted);padding:.2rem .3rem;
+                                font-size:.75rem;letter-spacing:.05em;transition:color .2s;">
+                        <span id="toggleSessidLabel">Afficher</span>
+                    </button>
+                </div>
                 <span class="hint">Connectez-vous sur pixiv.net → F12 → Application → Cookies → pixiv.net → PHPSESSID</span>
             </div>
             <div id="sessidValidation" style="display:none;margin-bottom:1rem;"></div>
@@ -1625,6 +1635,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         text.textContent = 'Impossible de joindre Pixiv pour vérifier le cookie.';
     }
 })();
+
+// Affiche ou masque la valeur du PHPSESSID dans le champ de saisie
+function toggleSessidVisibility() {
+    const input = document.getElementById('phpsessid');
+    const label = document.getElementById('toggleSessidLabel');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    label.textContent = isHidden ? 'Masquer' : 'Afficher';
+}
 
 // Validation du PHPSESSID saisi AVANT soumission du formulaire
 (function () {
