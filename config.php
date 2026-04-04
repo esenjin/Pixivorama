@@ -45,6 +45,25 @@ function save_settings(array $data): bool {
 $SETTINGS = load_settings();
 define('PIXIV_PHPSESSID', $SETTINGS['phpsessid']);
 
+// ── Tags bloqués (IA + personnalisés) ────────────────────────
+
+/** Tags IA bloqués par défaut (non modifiables, base de référence). */
+define('AI_TAGS_DEFAULT', [
+    'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
+    'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
+    'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
+]);
+
+/**
+ * Retourne la liste complète des tags bloqués :
+ * tags IA par défaut + tags personnalisés enregistrés dans settings.json.
+ */
+function get_blocked_tags(): array {
+    global $SETTINGS;
+    $custom = $SETTINGS['blocked_tags'] ?? [];
+    return array_unique(array_merge(AI_TAGS_DEFAULT, $custom));
+}
+
 // ── Inclusions ───────────────────────────────────────────────
 
 require_once __DIR__ . '/auth.php';

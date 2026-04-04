@@ -792,3 +792,133 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ── Tags bloqués ── */
+
+/* Grille tags par défaut (lecture seule) */
+.blocked-defaults-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.blocked-default-chip {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'Josefin Sans', monospace;
+    font-size: .62rem;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: .25rem .7rem;
+    border-radius: 2px;
+    user-select: none;
+    opacity: .7;
+}
+
+/* Séparateur visuel entre la zone lecture-seule et la zone éditable */
+.blocked-separator {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin: 1.4rem 0 1.2rem;
+}
+.blocked-separator::before,
+.blocked-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+.blocked-separator-label {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .58rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+    opacity: .6;
+}
+
+/* Liste des tags personnalisés */
+#blockedTagsList {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    margin-bottom: .7rem;
+}
+
+/* Ligne individuelle tag personnalisé */
+.blocked-tag-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .5rem;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .35rem .5rem .35rem .8rem;
+    transition: border-color .2s, background .2s;
+    animation: blockedTagIn .18s ease both;
+}
+.blocked-tag-row:hover {
+    border-color: var(--accent-dim);
+    background: rgba(200,169,126,.03);
+}
+@keyframes blockedTagIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.blocked-tag-row input[type="text"] {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Josefin Sans', monospace;
+    font-size: .8rem;
+    letter-spacing: .06em;
+    padding: .2rem 0;
+    width: 100%;
+    transition: color .2s;
+}
+.blocked-tag-row input[type="text"]::placeholder {
+    color: var(--text-muted);
+    opacity: .5;
+    font-style: italic;
+}
+.blocked-tag-row input[type="text"]:focus {
+    color: var(--accent);
+}
+/* Surbrillance de la ligne quand l'input est actif */
+.blocked-tag-row:has(input:focus) {
+    border-color: var(--accent-dim);
+    background: rgba(200,169,126,.05);
+}
+
+/* Bouton ✕ intégré dans la ligne */
+.blocked-tag-row .btn-danger {
+    padding: .28rem .55rem;
+    font-size: .7rem;
+    border-radius: 2px;
+    opacity: .45;
+    transition: opacity .2s, background .2s, border-color .2s;
+    flex-shrink: 0;
+}
+.blocked-tag-row:hover .btn-danger { opacity: 1; }
+
+/* Message "aucun tag" */
+#blockedTagsEmpty {
+    font-size: .68rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+    font-style: italic;
+    padding: .5rem .2rem;
+    opacity: .6;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+    .blocked-tag-row { padding: .3rem .4rem .3rem .65rem; }
+}

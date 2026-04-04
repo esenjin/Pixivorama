@@ -210,20 +210,13 @@ $works = [];
 $total = 0;
 
 // Tags indiquant une illustration générée par IA (filtre complémentaire)
-if (!defined('AI_TAGS')) {
-    define('AI_TAGS', [
-        'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
-        'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
-        'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
-    ]);
-}
-
 if (!function_exists('has_ai_tag')) {
     function has_ai_tag(array $work): bool {
+        $blocked  = get_blocked_tags();
         $workTags = $work['tags'] ?? [];
         foreach ($workTags as $t) {
             $tagName = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
-            if (in_array($tagName, AI_TAGS, true)) return true;
+            if (in_array($tagName, $blocked, true)) return true;
         }
         return false;
     }

@@ -247,6 +247,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = 'Préférences d\'affichage enregistrées.';
     }
 
+    // --- Tags bloqués personnalisés ---
+    elseif ($action === 'update_blocked_tags') {
+        $tab  = 'options';
+        $raw  = $_POST['blocked_tags'] ?? [];
+        // Nettoyer : trim, supprimer les vides, dédoublonner, réindexer
+        $tags = array_values(array_unique(array_filter(array_map('trim', $raw))));
+        $SETTINGS['blocked_tags'] = $tags;
+        save_settings($SETTINGS);
+        $success = count($tags) > 0
+            ? count($tags) . ' tag' . (count($tags) > 1 ? 's' : '') . ' bloqué' . (count($tags) > 1 ? 's' : '') . ' enregistré' . (count($tags) > 1 ? 's' : '') . '.'
+            : 'Tags personnalisés effacés.';
+    }
+
     // Redirect PRG
     $qs = '?tab=' . $tab;
     if ($success) $qs .= '&msg=' . urlencode($success) . '&mt=success';
@@ -647,6 +660,57 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
             <button type="submit" class="btn-primary">Changer le mot de passe</button>
+        </form>
+    </section>
+
+    <!-- ── Tags bloqués ── -->
+    <?php
+        $blocked_custom = $settings['blocked_tags'] ?? [];
+        $blocked_defaults = [
+            'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
+            'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
+            'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
+        ];
+    ?>
+    <section class="admin-section">
+        <p class="section-title">Tags bloqués</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Les illustrations portant ces tags sont filtrées des résultats dans toutes les galeries.
+            Les tags IA ci-dessous sont actifs par défaut et ne peuvent pas être supprimés.
+        </p>
+
+        <!-- Tags IA par défaut (lecture seule) -->
+        <p class="footer-link-label-section">Tags IA filtrés par défaut</p>
+        <div class="blocked-defaults-grid">
+            <?php foreach ($blocked_defaults as $t): ?>
+            <span class="blocked-default-chip"><?= htmlspecialchars($t) ?></span>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Séparateur -->
+        <div class="blocked-separator">
+            <span class="blocked-separator-label">Tags personnalisés supplémentaires</span>
+        </div>
+
+        <!-- Tags personnalisés (éditables) -->
+        <form method="POST" id="blockedTagsForm">
+            <input type="hidden" name="action" value="update_blocked_tags">
+            <div id="blockedTagsList">
+                <?php if (empty($blocked_custom)): ?>
+                <p id="blockedTagsEmpty">Aucun tag personnalisé pour l'instant.</p>
+                <?php else: ?>
+                <?php foreach ($blocked_custom as $ctag): ?>
+                <div class="blocked-tag-row">
+                    <input type="text" name="blocked_tags[]"
+                           value="<?= htmlspecialchars($ctag) ?>"
+                           placeholder="Tag Pixiv exact">
+                    <button type="button" class="btn-danger" onclick="removeBlockedTag(this)">✕</button>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <button type="button" class="btn-add" onclick="addBlockedTag()">+ Ajouter un tag</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
         </form>
     </section>
 
@@ -1673,6 +1737,34 @@ function removeRow(btn) {
         return;
     }
     btn.closest('.char-row').remove();
+}
+
+// ── Tags bloqués personnalisés ──
+function addBlockedTag() {
+    const empty = document.getElementById('blockedTagsEmpty');
+    if (empty) empty.remove();
+    const list = document.getElementById('blockedTagsList');
+    if (!list) return;
+    const row  = document.createElement('div');
+    row.className = 'blocked-tag-row';
+    row.innerHTML = `
+        <input type="text" name="blocked_tags[]" placeholder="Tag Pixiv exact">
+        <button type="button" class="btn-danger" onclick="removeBlockedTag(this)">✕</button>
+    `;
+    list.appendChild(row);
+    row.querySelector('input').focus();
+}
+function removeBlockedTag(btn) {
+    const list = document.getElementById('blockedTagsList');
+    btn.closest('.blocked-tag-row').remove();
+    // Si la liste est vide, réafficher le message
+    if (list && !list.querySelector('.blocked-tag-row')) {
+        const p = document.createElement('p');
+        p.id = 'blockedTagsEmpty';
+        p.style.cssText = 'font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;padding:.2rem 0;margin:0;';
+        p.textContent = 'Aucun tag personnalisé pour l\'instant.';
+        list.appendChild(p);
+    }
 }
 
 // ── Préférences galerie admin ──

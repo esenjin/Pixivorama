@@ -152,21 +152,13 @@ if (!$data || ($data['error'] ?? false)) { http_response_code(502); echo json_en
 
 // Tags indiquant une illustration générée par IA (filtre complémentaire à ai_type)
 // Certains artistes ne cochent pas la case IA lors de la publication.
-define('AI_TAGS', [
-    'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
-    'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
-    'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
-]);
-
-/**
- * Retourne true si l'œuvre comporte un tag IA connu.
- */
+// Les tags bloqués sont gérés centralement dans config.php
 function has_ai_tag(array $work): bool {
+    $blocked  = get_blocked_tags();
     $workTags = $work['tags'] ?? [];
     foreach ($workTags as $t) {
-        // Les tags Pixiv peuvent être une chaîne ou un tableau ['tag'=>…,'romaji'=>…]
         $tagName = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
-        if (in_array($tagName, AI_TAGS, true)) return true;
+        if (in_array($tagName, $blocked, true)) return true;
     }
     return false;
 }
