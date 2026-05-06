@@ -679,7 +679,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         $blocked_defaults = [
             'AI', 'AI-generated', 'AIart', 'AIartwork', 'AIgenerated',
             'AIアート', 'AIイラスト', 'AIのべりすと', 'ai少女',
-            'AI生成', 'AI生成作品', 'AI絵', 'AI绘画',
+            'AI生成', 'AI生成作品', 'AI絵', 'AI绘画', 'AI-assisted',
         ];
     ?>
     <section class="admin-section">
