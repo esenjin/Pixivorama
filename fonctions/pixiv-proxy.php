@@ -15,6 +15,7 @@ $mode        = $_GET['mode']    ?? PIXIV_DEFAULT_MODE;
 $gallery     = trim($_GET['gallery']    ?? '');
 $period      = trim($_GET['period']     ?? '');
 $free_search = !empty($_GET['free_search']);
+$is_private  = !empty($_GET['private']);
 
 if (!in_array($per_page, [28, 56], true)) $per_page = PIXIV_DEFAULT_PER_PAGE;
 if (!in_array($order, ['popular_d', 'date_d'], true)) $order = PIXIV_DEFAULT_ORDER;
@@ -28,14 +29,51 @@ if ($tag === '') {
 
 // Vérifie que le tag appartient à une galerie autorisée
 if (!$free_search) {
+    // Détecte si la requête vient d'une session admin (pour les aperçus des galeries privées)
+    $is_admin_session = false;
+    if ($is_private) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $is_admin_session = !empty($_SESSION['admin_ok']);
+    }
+
     $allowed_tags = [];
     if ($gallery !== '' && is_valid_gallery_slug($gallery)) {
+        // Cherche d'abord dans les galeries publiques
         $gdata = load_gallery($gallery);
-        if ($gdata) $allowed_tags = array_column($gdata['characters'], 'tag');
+        if ($gdata) {
+            $allowed_tags = array_column($gdata['characters'], 'tag');
+        } elseif ($is_admin_session) {
+            // Cherche dans les galeries privées si session admin
+            $priv_file = __DIR__ . '/../private/' . $gallery . '.json';
+            if (file_exists($priv_file)) {
+                $priv_data = json_decode(file_get_contents($priv_file), true);
+                if (is_array($priv_data)) {
+                    $allowed_tags = array_column($priv_data['characters'] ?? [], 'tag');
+                }
+            }
+        }
     }
     if (empty($allowed_tags)) {
+        // Collecte tous les tags des galeries publiques
         foreach (list_galleries() as $g) {
             foreach ($g['characters'] as $char) $allowed_tags[] = $char['tag'];
+        }
+        // Si admin, inclut aussi tous les tags des galeries privées par tags
+        if ($is_admin_session) {
+            $priv_dir = __DIR__ . '/../private';
+            if (is_dir($priv_dir)) {
+                foreach (glob($priv_dir . '/*.json') ?: [] as $f) {
+                    $slug = basename($f, '.json');
+                    if (!is_valid_gallery_slug($slug)) continue;
+                    $d = json_decode(file_get_contents($f), true);
+                    if (!is_array($d) || ($d['type'] ?? 'tag') !== 'tag') continue;
+                    foreach ($d['characters'] ?? [] as $char) {
+                        $allowed_tags[] = $char['tag'];
+                    }
+                }
+            }
         }
     }
     if (!in_array($tag, $allowed_tags, true)) {
@@ -50,16 +88,10 @@ if (!$free_search) {
 define('CACHE_DIR', __DIR__ . '/../cache');
 define('CACHE_TTL', 600); // secondes (10 minutes)
 
-/**
- * Retourne le chemin du fichier cache pour une clé donnée.
- */
 function cache_path(string $key): string {
     return CACHE_DIR . '/' . $key . '.json';
 }
 
-/**
- * Lit le cache si valide, retourne null sinon.
- */
 function cache_get(string $key): ?string {
     $path = cache_path($key);
     if (!file_exists($path)) return null;
@@ -71,22 +103,16 @@ function cache_get(string $key): ?string {
     return $data !== false ? $data : null;
 }
 
-/**
- * Écrit une valeur en cache.
- */
 function cache_set(string $key, string $value): void {
     if (!is_dir(CACHE_DIR)) {
         mkdir(CACHE_DIR, 0755, true);
-        // Protège le dossier contre l'accès direct
         file_put_contents(CACHE_DIR . '/.htaccess', "Order allow,deny\nDeny from all\n");
     }
     file_put_contents(cache_path($key), $value, LOCK_EX);
 }
 
-// Construire la clé de cache (sans free_search ni gallery, qui n'affectent pas la réponse Pixiv)
 $cache_key = hash('sha256', implode('|', [$tag, $page, $per_page, $order, $mode, $period]));
 
-// Servir depuis le cache si disponible
 $cached = cache_get($cache_key);
 if ($cached !== null) {
     header('X-Cache: HIT');
@@ -150,9 +176,6 @@ if ($http_code !== 200) { http_response_code(502); echo json_encode(['error' => 
 $data = json_decode($response, true);
 if (!$data || ($data['error'] ?? false)) { http_response_code(502); echo json_encode(['error' => 'Réponse invalide de Pixiv.']); exit; }
 
-// Tags indiquant une illustration générée par IA (filtre complémentaire à ai_type)
-// Certains artistes ne cochent pas la case IA lors de la publication.
-// Les tags bloqués sont gérés centralement dans config.php
 function has_ai_tag(array $work): bool {
     $blocked  = get_blocked_tags();
     $workTags = $work['tags'] ?? [];
@@ -166,7 +189,6 @@ function has_ai_tag(array $work): bool {
 $raw_all   = $data['body']['illustManga']['data'] ?? [];
 $total_raw = $data['body']['illustManga']['total'] ?? 0;
 
-// Filtrer les œuvres IA (ai_type + tags explicites)
 $filtered = array_values(array_filter($raw_all, function($work) {
     if (($work['aiType'] ?? 0) >= 2) return false;
     if (has_ai_tag($work)) return false;
@@ -174,7 +196,6 @@ $filtered = array_values(array_filter($raw_all, function($work) {
 }));
 
 $raw_works = array_slice($filtered, 0, $per_page);
-// Ajuster le total estimé proportionnellement au ratio de filtrage
 $total = ($total_raw > 0 && count($raw_all) > 0)
     ? (int) round($total_raw * count($filtered) / count($raw_all))
     : count($filtered);
@@ -196,7 +217,6 @@ foreach ($raw_works as $work) {
 
 $output = json_encode(['works' => $works, 'total' => $total, 'page' => $page, 'perPage' => $per_page]);
 
-// Mettre en cache uniquement les réponses valides
 cache_set($cache_key, $output);
 
 header('X-Cache: MISS');

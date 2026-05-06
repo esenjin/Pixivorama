@@ -25,6 +25,7 @@
 $is_private  = $is_private  ?? false;
 $footer_links = $footer_links ?? [];
 $admin_defs  = $admin_defs  ?? null;
+$private_home_href = $private_home_href ?? '../private-home.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -105,6 +106,14 @@ $admin_defs  = $admin_defs  ?? null;
         <span class="footer-sep"></span>
         <?php if ($is_private): ?>
         <a class="footer-link" href="<?= htmlspecialchars($back_href) ?>">← Espace perso</a>
+        <span class="footer-sep"></span>
+        <a class="footer-link" href="<?= htmlspecialchars($private_home_href ?? '../private-home.php') ?>">
+            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Galeries privées
+        </a>
         <span class="footer-sep"></span>
         <a class="footer-link" href="<?= htmlspecialchars($index_href ?? '../index.php') ?>">Galeries publiques</a>
         <?php else: ?>

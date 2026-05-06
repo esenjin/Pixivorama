@@ -126,6 +126,14 @@ $has_mode = in_array($gallery_type, ['tag', 'illust', 'bookmark']);
         <span class="footer-sep"></span>
         <a class="footer-link" href="../perso.php">← Espace perso</a>
         <span class="footer-sep"></span>
+        <a class="footer-link" href="../private-home.php">
+            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Galeries privées
+        </a>
+        <span class="footer-sep"></span>
         <a class="footer-link" href="../index.php">Galeries publiques</a>
         <span class="footer-sep"></span>
     </div>

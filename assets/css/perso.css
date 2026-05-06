@@ -97,6 +97,77 @@
     padding: 1.2rem 1.2rem 1.4rem;
 }
 
+/* ── Page d'accueil espace perso (private-home.php) ── */
+
+/* Section avec titre séparateur */
+.private-home-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 2rem 0;
+}
+
+.private-home-section-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.private-home-section-label {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .58rem;
+    font-weight: 400;
+    letter-spacing: .38em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.private-home-section-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* Grille — hérite de .galleries-grid mais avec un peu moins d'espacement bas */
+.private-galleries-grid {
+    margin-top: 0 !important;
+    padding-bottom: 2.5rem !important;
+}
+
+/* Icône centrale flottante sur les cartes spéciales */
+.pgc-special-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+    font-size: 2.2rem;
+    color: var(--accent);
+    opacity: .18;
+    pointer-events: none;
+    transition: opacity .4s, transform .4s;
+    z-index: 1;
+}
+.private-gallery-card--special:hover .pgc-special-icon {
+    opacity: .28;
+    transform: translate(-50%, -55%) scale(1.08);
+}
+
+/* Teinte dorée subtile sur la bordure des cartes privées au survol */
+.private-gallery-card {
+    border: 1px solid transparent;
+    transition: border-color .35s;
+}
+.private-gallery-card:hover {
+    border-color: rgba(200, 169, 126, .18);
+}
+
+/* Ajout d'un espace sous la dernière section */
+.private-home-section:last-of-type {
+    padding-bottom: 0;
+}
+
 /* ── Modale création spéciale ── */
 #specialModal .cmodal-msg {
     font-family: 'Josefin Sans', sans-serif;

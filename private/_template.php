@@ -44,6 +44,7 @@ $extra_params = 'type=tag&gallery=' . rawurlencode($slug);
 $assets_path  = '../assets/';
 $admin_href   = '../admin.php';
 $index_href   = '../index.php';
+$private_home_href = '../private-home.php';
 $footer_links = [];
 $admin_defs   = get_admin_gallery_defaults($SETTINGS);
 

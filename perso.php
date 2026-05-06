@@ -227,6 +227,7 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
         </div>
         <div style="display:flex;gap:1.5rem;align-items:center;">
             <a href="index.php">← Accueil</a>
+            <a href="private-home.php">Voir les galeries</a>
             <a href="admin.php">Administration</a>
             <a href="admin.php?logout=1">Déconnexion</a>
         </div>
