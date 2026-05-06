@@ -317,6 +317,35 @@
     .char-row input:last-of-type { grid-column: 2; }
     .char-row-header { display: none; }
     .footer-link-fields > div { grid-template-columns: 1fr !important; }
+
+    /* Fix : bouton "Afficher" superposé au champ PHPSESSID */
+    #phpsessid { padding-right: 5.5rem !important; }
+    #toggleSessid { font-size: .65rem; right: .4rem; }
+
+    /* Fix : bloc préférences d'affichage dépasse de l'écran */
+    .admin-prefs-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Fix : noms des archives illisibles */
+    .save-item-name {
+        white-space: normal;
+        word-break: break-all;
+    }
+    .import-row {
+        grid-template-columns: auto 1fr !important;
+        flex-wrap: wrap;
+    }
+    .import-row-slug {
+        grid-column: 1 / -1;
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+    .import-slug-input {
+        width: 100%;
+    }
 }
 
 /* ── Badge statut cookie Pixiv ── */
@@ -952,5 +981,8 @@
         width: 100%;
         flex-wrap: wrap;
         gap: .4rem;
+    }
+    .save-item {
+        display: block;
     }
 }

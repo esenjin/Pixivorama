@@ -133,6 +133,8 @@ function attachTooltips() {
         });
         card.addEventListener('mousemove', positionTooltip);
         card.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+        // Sur mobile, le tooltip reste affiché après le tap — on le masque immédiatement
+        card.addEventListener('click', () => tooltip.classList.remove('visible'));
     });
 }
 function positionTooltip(e) {
@@ -279,8 +281,32 @@ btnToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'sm
 
 const charSelectorEl = document.getElementById('charSelector');
 if (charSelectorEl) {
+    // ── Menu déroulant si plus de 5 tags ──
+    const allBtns = Array.from(charSelectorEl.querySelectorAll('.char-btn'));
+    const THRESHOLD = 5;
+
+    if (allBtns.length > THRESHOLD) {
+        // Masquer les boutons au-delà du seuil
+        allBtns.slice(THRESHOLD).forEach(b => b.classList.add('char-btn--hidden'));
+
+        const toggle = document.createElement('button');
+        toggle.className = 'char-btn char-btn--toggle';
+        toggle.textContent = `+ ${allBtns.length - THRESHOLD} tags`;
+        toggle.setAttribute('aria-expanded', 'false');
+        charSelectorEl.appendChild(toggle);
+
+        let expanded = false;
+        toggle.addEventListener('click', () => {
+            expanded = !expanded;
+            allBtns.slice(THRESHOLD).forEach(b => b.classList.toggle('char-btn--hidden', !expanded));
+            toggle.textContent = expanded ? '− Réduire' : `+ ${allBtns.length - THRESHOLD} tags`;
+            toggle.setAttribute('aria-expanded', String(expanded));
+            toggle.classList.toggle('char-btn--toggle-open', expanded);
+        });
+    }
+
     charSelectorEl.addEventListener('click', e => {
-        const btn = e.target.closest('.char-btn');
+        const btn = e.target.closest('.char-btn:not(.char-btn--toggle)');
         if (!btn) return;
         document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');

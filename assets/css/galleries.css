@@ -428,6 +428,30 @@ h1 {
     .page-btn.page-edge { display: none; } /* masque «/» sur mobile pour gagner de la place */
 }
 
+/* Sur mobile/touch, le tooltip n'a pas lieu d'être (pas de survol) */
+@media (hover: none) {
+    .img-tooltip { display: none !important; }
+}
+
+/* ── Menu déroulant tags (> 5) ── */
+.char-btn--hidden {
+    display: none !important;
+}
+.char-btn--toggle {
+    border-style: dashed;
+    color: var(--text-muted);
+    opacity: .75;
+}
+.char-btn--toggle:hover {
+    border-color: var(--accent-dim);
+    color: var(--text);
+    opacity: 1;
+}
+.char-btn--toggle-open {
+    border-color: var(--accent-dim);
+    opacity: 1;
+}
+
 /* ============================================================
    AJOUTS — Contrôles galerie & tooltip
    ============================================================ */
