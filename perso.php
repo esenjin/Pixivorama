@@ -367,7 +367,9 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
                         <div class="char-row-header">
                             <span></span><span>Label affiché</span><span>Tag Pixiv</span><span></span>
                         </div>
-                        <div class="char-list" id="pcl-<?= htmlspecialchars($g['slug']) ?>">
+                        <div class="char-list" id="pcl-<?= htmlspecialchars($g['slug']) ?>"
+                             data-src-slug="<?= htmlspecialchars($g['slug']) ?>"
+                             data-src-type="private">
                             <?php foreach ($g['characters'] ?? [] as $char): ?>
                             <div class="char-row">
                                 <span class="drag-handle" draggable="true">⠿</span>
@@ -375,6 +377,8 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
                                        value="<?= htmlspecialchars($char['label']) ?>" required>
                                 <input type="text" name="char_tag[]"
                                        value="<?= htmlspecialchars($char['tag']) ?>" required>
+                                <button type="button" class="btn-move-tag" title="Déplacer vers une autre galerie"
+                                        onclick="openMoveTagModal(this)">⇄</button>
                                 <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
                             </div>
                             <?php endforeach; ?>
@@ -472,6 +476,33 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
 
 </div><!-- /.admin-wrap -->
 
+<!-- ══ Modale déplacement de tag ══ -->
+<div id="moveTagModal" class="cmodal-backdrop" style="display:none" aria-modal="true" role="dialog">
+    <div class="cmodal-box cmodal-box-movetag">
+        <p class="cmodal-msg">Déplacer le tag <strong id="moveTagLabel"></strong> vers…</p>
+        <div id="moveTagGalleryList" class="movetag-gallery-list"></div>
+        <div class="cmodal-actions">
+            <button type="button" class="cmodal-btn cmodal-btn-cancel" id="moveTagCancel">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<?php
+$_pub  = list_galleries();
+$_priv = list_private_galleries();
+$_pubList  = array_map(fn($g) => ['slug' => $g['slug'], 'title' => $g['title']], $_pub);
+$_privList = array_values(array_map(
+    fn($g) => ['slug' => $g['slug'], 'title' => $g['title']],
+    array_filter($_priv, fn($g) => ($g['type'] ?? 'tag') === 'tag')
+));
+?>
+<script>
+const MOVETAG_GALLERIES = {
+    public:  <?= json_encode($_pubList,  JSON_UNESCAPED_UNICODE) ?>,
+    private: <?= json_encode($_privList, JSON_UNESCAPED_UNICODE) ?>
+};
+</script>
+
 <button class="admin-btn-to-top" id="adminBtnToTop" title="Retour en haut">↑</button>
 
 <script>
@@ -559,10 +590,12 @@ function addRow(listId) {
     const list = document.getElementById(listId);
     const row  = document.createElement('div');
     row.className = 'char-row';
+    const hasSrc = list && list.dataset.srcSlug;
     row.innerHTML = `
         <span class="drag-handle" draggable="true">⠿</span>
         <input type="text" name="char_label[]" placeholder="Nom affiché" required>
         <input type="text" name="char_tag[]"   placeholder="Tag Pixiv" required>
+        ${hasSrc ? '<button type="button" class="btn-move-tag" title="Déplacer vers une autre galerie" onclick="openMoveTagModal(this)">⇄</button>' : ''}
         <button type="button" class="btn-danger" onclick="removeRow(this)">✕</button>
     `;
     list.appendChild(row);
@@ -656,6 +689,104 @@ async function confirmMove(slug, title, direction) {
         await _modal('Erreur réseau lors du déplacement.');
     }
 }
+
+// ── Modale déplacement de tag ──
+(function () {
+    const modal     = document.getElementById('moveTagModal');
+    const labelEl   = document.getElementById('moveTagLabel');
+    const listEl    = document.getElementById('moveTagGalleryList');
+    const cancelBtn = document.getElementById('moveTagCancel');
+    if (!modal) return;
+
+    let _srcRow, _srcSlug, _srcType;
+
+    window.openMoveTagModal = function (btn) {
+        _srcRow  = btn.closest('.char-row');
+        const cl = _srcRow.closest('.char-list');
+        _srcSlug = cl.dataset.srcSlug;
+        _srcType = cl.dataset.srcType;
+
+        const label = _srcRow.querySelector('input[name="char_label[]"]').value || '(sans nom)';
+        labelEl.textContent = label;
+
+        listEl.innerHTML = '';
+
+        const groups = [
+            { key: 'public',  heading: 'Galeries publiques' },
+            { key: 'private', heading: 'Galeries privées' },
+        ];
+
+        groups.forEach(({ key, heading }) => {
+            const items = (MOVETAG_GALLERIES[key] || [])
+                .filter(g => !(g.slug === _srcSlug && key === _srcType));
+            if (!items.length) return;
+
+            const sep = document.createElement('p');
+            sep.className = 'movetag-group-label';
+            sep.textContent = heading;
+            listEl.appendChild(sep);
+
+            items.forEach(g => {
+                const btn2 = document.createElement('button');
+                btn2.type = 'button';
+                btn2.className = 'movetag-gallery-btn';
+                btn2.innerHTML = `<span class="movetag-gallery-title">${escH(g.title)}</span>`
+                    + `<span class="movetag-gallery-slug">${escH(g.slug)}</span>`;
+                btn2.onclick = () => doMoveTag(g.slug, key);
+                listEl.appendChild(btn2);
+            });
+        });
+
+        if (!listEl.children.length) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);font-size:.7rem;text-align:center;padding:.5rem 0;">Aucune autre galerie disponible.</p>';
+        }
+
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => modal.classList.add('visible'));
+    };
+
+    function closeModal() {
+        modal.classList.remove('visible');
+        setTimeout(() => { modal.style.display = 'none'; }, 220);
+    }
+
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    async function doMoveTag(dstSlug, dstType) {
+        const rows     = [..._srcRow.closest('.char-list').querySelectorAll('.char-row')];
+        const tagIndex = rows.indexOf(_srcRow);
+
+        closeModal();
+
+        const fd = new FormData();
+        fd.append('src_slug',  _srcSlug);
+        fd.append('src_type',  _srcType);
+        fd.append('dst_slug',  dstSlug);
+        fd.append('dst_type',  dstType);
+        fd.append('tag_index', tagIndex);
+
+        try {
+            const res  = await fetch('fonctions/move-tag.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) { await _modal('Erreur : ' + data.error); return; }
+
+            const list = _srcRow.closest('.char-list');
+            _srcRow.remove();
+            if (!list.querySelectorAll('.char-row').length) {
+                location.reload();
+                return;
+            }
+            await _modal(`Tag « ${data.tag_label} » déplacé vers « ${data.dst_title} ».`);
+        } catch {
+            await _modal('Erreur réseau lors du déplacement.');
+        }
+    }
+
+    function escH(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+})();
 
 // ── Bouton retour en haut ──
 (function () {
