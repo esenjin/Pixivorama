@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $action !== 'download') {
     http_response_code(405);
     echo json_encode(['error' => 'Méthode non supportée.']);
     exit;
@@ -91,6 +91,23 @@ switch ($action) {
         $allSaves = glob(SAVES_DIR . '/backup_*.zip') ?: []; rsort($allSaves);
         foreach (array_slice($allSaves, 20) as $old) @unlink($old);
         echo json_encode(['ok' => true, 'file' => $filename, 'size' => filesize($filepath), 'count' => $count]);
+        exit;
+
+    case 'download':
+        $file = basename($_GET['file'] ?? $_POST['file'] ?? '');
+        if (!preg_match('/^backup_[\d_\-]+\.zip$/', $file)) {
+            echo json_encode(['error' => 'Nom de fichier invalide.']); exit;
+        }
+        $path = SAVES_DIR . '/' . $file;
+        if (!file_exists($path)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Fichier introuvable.']); exit;
+        }
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $file . '"');
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: no-store');
+        readfile($path);
         exit;
 
     case 'delete':

@@ -23,9 +23,11 @@
 </FilesMatch>
 
 # Bloque l'accès direct au dossier includes/ (fichiers utilitaires PHP)
+# Bloque l'accès direct au dossier saves/ (archives ZIP de sauvegarde)
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^includes/ - [F,L]
+    RewriteRule ^saves/ - [F,L]
 </IfModule>
 
 # ── Réécriture et gestion des erreurs ───────────────────────

@@ -1273,6 +1273,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                     </div>
                     <div style="display:flex;gap:.5rem;flex-shrink:0;">
                         <button class="btn-small" onclick="doRestore('${escH(s.file)}')">Restaurer</button>
+                        <button class="btn-small" onclick="downloadSave('${escH(s.file)}')">Télécharger</button>
                         <button class="btn-small" style="color:#c0776a;border-color:#6a3030;"
                                 onclick="deleteSave('${escH(s.file)}', this)">Supprimer</button>
                     </div>
@@ -1292,6 +1293,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         const data = await res.json();
         if (data.ok) { loadSavesList(); refreshImportSaveList(); }
         else _modal('Erreur : ' + data.error);
+    }
+
+    function downloadSave(file) {
+        const a = document.createElement('a');
+        a.href = 'fonctions/backup.php?action=download&file=' + encodeURIComponent(file);
+        a.download = file;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     }
 
     // ── Export ──
