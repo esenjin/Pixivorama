@@ -4,6 +4,16 @@
 
 const PROXY_URL    = window.PIXIV_PROXY_URL    || 'fonctions/private-proxy.php';
 const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
+
+// ── Proxy d'images : pixiv.cat en principal, pixiv.re en fallback ──
+function pixivThumb(url) {
+    return (url || '').replace('https://i.pximg.net', 'https://i.pixiv.cat');
+}
+function pixivThumbFallback(img) {
+    if (!img.src.includes('pixiv.cat')) return;
+    img.onerror = null;
+    img.src = img.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re');
+}
 const HAS_ORDER    = window.PIXIV_HAS_ORDER   !== false;
 const HAS_PERPAGE  = window.PIXIV_HAS_PERPAGE !== false;
 
@@ -198,7 +208,7 @@ function render(works) {
         const pages    = w.pageCount > 1 ? `<span class="badge-pages">${w.pageCount}</span>` : '';
         const r18Badge  = w.xRestrict  >= 1 ? `<span class="badge-r18">18+</span>`  : '';
         const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
-        const thumbUrl = w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re');
+        const thumbUrl = pixivThumb(w.thumb);
 
         // Détection nouveauté (uniquement pour following)
         const isNew = IS_FOLLOWING && !seenIds.has(w.id);
@@ -214,7 +224,7 @@ function render(works) {
            data-title="${escHtml(w.title)}"
            data-artist="${escHtml(w.userName)}">
             <div class="thumb-wrap">
-                <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy">
+                <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy" onerror="pixivThumbFallback(this)">
                 ${pages}
                 ${r18Badge}
                 ${gifBadge}

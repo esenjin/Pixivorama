@@ -5,6 +5,16 @@
 const PROXY_URL    = window.PIXIV_PROXY_URL    || 'fonctions/pixiv-proxy.php';
 const EXTRA_PARAMS = window.PIXIV_EXTRA_PARAMS || '';
 
+// ── Proxy d'images : pixiv.cat en principal, pixiv.re en fallback ──
+function pixivThumb(url) {
+    return (url || '').replace('https://i.pximg.net', 'https://i.pixiv.cat');
+}
+function pixivThumbFallback(img) {
+    if (!img.src.includes('pixiv.cat')) return;
+    img.onerror = null;
+    img.src = img.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re');
+}
+
 // Appliquer les préférences admin si présentes, sinon valeurs publiques par défaut
 const _DEFS = window.PIXIV_DEFAULTS || {};
 
@@ -103,14 +113,14 @@ function render(works) {
             ? `<span class="badge-pages">${w.pageCount}</span>` : '';
         const r18Badge  = w.xRestrict  >= 1 ? `<span class="badge-r18">18+</span>`  : '';
         const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
-        const thumbUrl = w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re');
+        const thumbUrl = pixivThumb(w.thumb);
         return `
         <a class="card" href="${pixivUrl}" target="_blank" rel="noopener"
            style="animation-delay:${delay}ms"
            data-title="${escHtml(w.title)}"
            data-artist="${escHtml(w.userName)}">
             <div class="thumb-wrap">
-                <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy">
+                <img src="${thumbUrl}" alt="${escHtml(w.title)}" loading="lazy" onerror="pixivThumbFallback(this)">
                 ${pages}
                 ${r18Badge}
                 ${gifBadge}

@@ -237,7 +237,7 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
                 return data.works
                     .sort(() => Math.random() - .5)
                     .slice(0, IMGS_PER_TAG)
-                    .map(w => w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re'));
+                    .map(w => (w.thumb || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'));
             } catch { return []; }
         }));
 
@@ -297,6 +297,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 
             const url = pool[i];
             imgA.src  = url;
+            imgA.onerror = function() {
+                if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+            };
             visible.add(url);
 
             wrapper.appendChild(imgA);
@@ -318,6 +321,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 
                 if (cell.front === 'A') {
                     cell.imgB.src = nextUrl;
+                    cell.imgB.onerror = function() {
+                        if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+                    };
                     cell.imgB.onload = () => {
                         cell.imgA.style.opacity = '0';
                         cell.imgB.style.opacity = '1';
@@ -325,6 +331,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
                     };
                 } else {
                     cell.imgA.src = nextUrl;
+                    cell.imgA.onerror = function() {
+                        if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+                    };
                     cell.imgA.onload = () => {
                         cell.imgB.style.opacity = '0';
                         cell.imgA.style.opacity = '1';
@@ -360,7 +369,7 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
             const pool = data.works
                 .sort(() => Math.random() - .5)
                 .slice(0, 12)
-                .map(w => (w.thumb || w.image_urls?.square_medium || '').replace('https://i.pximg.net', 'https://i.pixiv.re'))
+                .map(w => (w.thumb || w.image_urls?.square_medium || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'))
                 .filter(Boolean);
 
             if (pool.length < 6) continue;
@@ -390,6 +399,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 
                 const url = pool[i];
                 imgA.src  = url;
+                imgA.onerror = function() {
+                    if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+                };
                 visible.add(url);
 
                 wrapper.appendChild(imgA);
@@ -411,6 +423,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 
                     if (cell.front === 'A') {
                         cell.imgB.src = nextUrl;
+                        cell.imgB.onerror = function() {
+                            if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+                        };
                         cell.imgB.onload = () => {
                             cell.imgA.style.opacity = '0';
                             cell.imgB.style.opacity = '1';
@@ -418,6 +433,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
                         };
                     } else {
                         cell.imgA.src = nextUrl;
+                        cell.imgA.onerror = function() {
+                            if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
+                        };
                         cell.imgA.onload = () => {
                             cell.imgB.style.opacity = '0';
                             cell.imgA.style.opacity = '1';

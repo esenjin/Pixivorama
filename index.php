@@ -147,7 +147,7 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
                 return data.works
                     .sort(() => Math.random() - .5)
                     .slice(0, IMGS_PER_TAG)
-                    .map(w => w.thumb.replace('https://i.pximg.net', 'https://i.pixiv.re'));
+                    .map(w => (w.thumb || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'));
             } catch { return []; }
         }));
 
@@ -204,6 +204,12 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
                 img.className = 'gc-mosaic-img';
                 img.alt       = '';
                 img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.8);transition:opacity .9s ease;';
+                img.onerror = function() {
+                    if (this.src.includes('pixiv.cat')) {
+                        this.onerror = null;
+                        this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re');
+                    }
+                };
             });
             imgA.style.opacity = '1';
             imgB.style.opacity = '0';
