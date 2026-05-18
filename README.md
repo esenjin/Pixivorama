@@ -8,7 +8,7 @@ Galerie légère pour parcourir des illustrations Pixiv par tags, sans compte re
 
 ## Fonctionnement
 
-Un proxy PHP interroge l'API interne de Pixiv via un cookie de session (PHPSESSID). Les vignettes sont servies par [i.pixiv.re](https://i.pixiv.re) pour contourner la restriction de référent. Aucune image n'est hébergée localement.
+Un proxy PHP interroge l'API interne de Pixiv via un cookie de session (PHPSESSID). Les vignettes sont servies par [i.pixiv.cat](https://i.pixiv.cat) pour contourner la restriction de référent. Aucune image n'est hébergée localement.
 
 Chaque illustration redirige vers sa page Pixiv originale, générant du trafic vers la plateforme et permettant aux visiteurs d'interagir avec l'œuvre.
 
