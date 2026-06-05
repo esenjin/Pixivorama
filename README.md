@@ -14,7 +14,7 @@ Chaque illustration redirige vers sa page Pixiv originale, générant du trafic 
 
 ## Prérequis
 
-- PHP 7.4+ avec l'extension `curl`
+- PHP 7.4+ avec les extensions `curl` et `pdo_sqlite`
 - Un compte Pixiv (pour récupérer le PHPSESSID)
 - Un serveur web avec `.htaccess` (Apache / LiteSpeed)
 
@@ -46,6 +46,7 @@ fonctions/
   pixiv-proxy.php           Proxy public → API Pixiv (galeries par tags, avec cache)
   private-proxy.php         Proxy privé → API Pixiv (données personnelles, admin uniquement)
   regen.php                 Régénération des fichiers PHP de galeries (endpoint AJAX admin)
+  seen.php                  Lecture / écriture des illustrations vues (endpoint AJAX admin)
 
 assets/
   styles.css                Feuille de style principale (importe les partiels CSS)
@@ -64,6 +65,9 @@ private/
   _special.php              Template des galeries spéciales (illust, bookmark, following)
   {slug}.php                Pages de galerie privée générées
   {slug}.json               Données des galeries privées (schema_version inclus)
+
+data/
+  seen.db                   Base SQLite des illustrations vues (créée automatiquement)
 
 errors/
   403.php / 404.php         Pages d'erreur personnalisées
@@ -97,7 +101,7 @@ Accès direct aux données Pixiv du compte connecté via le cookie de session :
 | Mes bookmarks | Illustrations mises en favori |
 | Artistes suivis | Dernières publications des abonnements |
 
-La galerie Artistes suivis dispose d'un système de suivi des nouveautés : les illustrations non encore vues sont marquées d'un badge *Nouveau*, avec un bouton pour les marquer toutes comme vues. L'état est conservé en `localStorage` avec une durée de vie de 90 jours.
+La galerie Artistes suivis dispose d'un système de suivi des nouveautés : les illustrations non encore vues sont marquées d'un badge *Nouveau*, avec un bouton pour les marquer toutes comme vues. L'état est persisté en base SQLite (`data/seen.db`) côté serveur, ce qui synchronise l'état entre tous les appareils et navigateurs. La durée de mémorisation est configurable dans les Options (90 jours par défaut).
 
 ## Recherche libre
 
@@ -116,18 +120,24 @@ L'interface (`admin.php`) est organisée en quatre onglets :
 
 - **Session Pixiv** — saisie du PHPSESSID avec vérification en temps réel et affichage du pseudo Pixiv associé
 - **Galeries** — création, édition, suppression et réorganisation des galeries publiques
-- **Options** — personnalisation de la page d'accueil (titre, sous-titre, lien pied de page) et changement du mot de passe administrateur
-- **Maintenance** — régénération des fichiers PHP de galeries, sauvegarde et import ZIP
+- **Options** — personnalisation de la page d'accueil (titre, sous-titre, lien pied de page), changement du mot de passe administrateur, et durée de mémorisation des illustrations vues
+- **Maintenance** — régénération des fichiers PHP de galeries, statistiques et purge de `seen.db`, sauvegarde et import ZIP
 
 ## Sécurité
 
 - `settings.json`, `config.php` et `auth.php` sont protégés par `.htaccess` (accès direct refusé)
 - Le dossier `includes/` est bloqué par une RewriteRule (fichiers utilitaires non destinés au web)
+- Le dossier `data/` est bloqué par une RewriteRule (base de données non accessible publiquement)
 - Tous les fichiers `.json` sont protégés par `.htaccess`
 - Le cookie PHPSESSID ne quitte jamais le serveur
 - Les galeries privées et l'espace perso nécessitent une session administrateur active (durée : 7 jours)
+- L'endpoint `seen.php` est réservé aux sessions admin
 - Les slugs sont validés (`[a-z0-9\-]{1,20}`) avant tout accès au système de fichiers
 - Les JSON de galeries incluent un champ `schema_version` pour faciliter les migrations futures
+
+## Sauvegardes
+
+Les sauvegardes ZIP (onglet Maintenance) incluent les galeries publiques et privées ainsi que les illustrations vues (`seen_data.json`). À l'import, la fusion des données vues est optionnelle via une checkbox. La restauration complète remplace intégralement `seen.db`.
 
 ## Notes
 
