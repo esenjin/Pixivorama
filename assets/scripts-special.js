@@ -19,9 +19,6 @@ const HAS_PERPAGE  = window.PIXIV_HAS_PERPAGE !== false;
 
 const IS_FOLLOWING = EXTRA_PARAMS.includes('type=following');
 
-const GALLERY_SLUG   = location.pathname.split('/').pop().replace('.php', '');
-const SEEN_STORE_KEY = `pixiv_seen_${GALLERY_SLUG}`;
-
 // Préférences admin
 const _DEFS = window.PIXIV_DEFAULTS || {};
 
@@ -32,12 +29,18 @@ let currentMode    = _DEFS.mode     || 'safe';
 let currentPeriod  = _DEFS.period   !== undefined ? _DEFS.period : '';
 let loading        = false;
 
-// IDs déjà vus, chargés depuis localStorage — structure : { id: timestampSeconds }
-// Les entrées de plus de SEEN_TTL_DAYS jours sont purgées automatiquement au chargement.
-const SEEN_TTL_DAYS = 90;
+// ── Gestion des IDs vus (SQLite via seen.php) ────────────────
+//
+//  seenIds  : Set<string>   — IDs déjà vus (chargés depuis le serveur)
+//  seenReady: boolean       — true une fois le chargement initial terminé
+//
+const SEEN_ENDPOINT = (window.PIXIV_ROOT || '') + 'fonctions/seen.php';
 
-let seenMap = loadSeenMap();       // Map<id, timestamp>
-let seenIds = new Set(seenMap.keys()); // Set rapide pour les lookups
+let seenIds  = new Set();
+let seenReady = false;
+
+// IDs de la session courante (pour le bouton "marquer comme vus")
+let newIdsThisLoad = new Set();
 
 // ── Sync des pills avec les defaults admin au chargement ──
 (function syncDefaultPills() {
@@ -60,66 +63,73 @@ let seenIds = new Set(seenMap.keys()); // Set rapide pour les lookups
     }
 })();
 
-// IDs de la session courante (pour le bouton "marquer comme vues")
-let newIdsThisLoad = new Set();
-
 const gallery    = document.getElementById('gallery');
 const statusBar  = document.getElementById('statusBar');
 const pagination = document.getElementById('pagination');
 const btnToTop   = document.getElementById('btnToTop');
 const tooltip    = document.getElementById('imgTooltip');
 
-// ── Gestion localStorage des IDs vus ──
+// ── Chargement initial des IDs vus ──────────────────────────
 
 /**
- * Charge le Map depuis localStorage et purge les entrées expirées.
- * Retourne un Map<string, number> (id → timestamp Unix en secondes).
+ * Charge les IDs vus depuis le serveur (seen.php).
+ * Pour les galeries non-following, on ne charge pas et on démarre directement.
  */
-function loadSeenMap() {
-    const cutoff = Math.floor(Date.now() / 1000) - SEEN_TTL_DAYS * 86400;
+async function initSeenIds() {
+    if (!IS_FOLLOWING) {
+        seenReady = true;
+        load(currentPage);
+        return;
+    }
+
     try {
-        const raw = localStorage.getItem(SEEN_STORE_KEY);
-        if (!raw) return new Map();
-
-        const parsed = JSON.parse(raw);
-
-        // Compatibilité avec l'ancien format (tableau simple d'IDs sans timestamp)
-        if (Array.isArray(parsed)) {
-            // Migration : on leur attribue "maintenant" pour ne pas les expirer aussitôt
-            const now = Math.floor(Date.now() / 1000);
-            return new Map(parsed.map(id => [String(id), now]));
+        const res  = await fetch(SEEN_ENDPOINT + '?action=load');
+        const data = await res.json();
+        if (data.ok && data.seen) {
+            seenIds = new Set(Object.keys(data.seen));
         }
+    } catch (e) {
+        // En cas d'erreur réseau, on continue sans IDs vus
+        console.warn('[Pixivorama] Impossible de charger les IDs vus :', e);
+    }
 
-        // Format normal : objet { id: timestamp }
-        const map = new Map();
-        for (const [id, ts] of Object.entries(parsed)) {
-            if (ts >= cutoff) map.set(id, ts); // entrées expirées silencieusement écartées
-        }
-        return map;
-    } catch { return new Map(); }
+    seenReady = true;
+    load(currentPage);
 }
 
-function saveSeenMap() {
-    try {
-        const obj = Object.fromEntries(seenMap);
-        localStorage.setItem(SEEN_STORE_KEY, JSON.stringify(obj));
-    } catch {}
-}
+// ── Envoi des IDs marqués comme vus ─────────────────────────
 
-function markAllSeen() {
-    const now = Math.floor(Date.now() / 1000);
-    newIdsThisLoad.forEach(id => {
-        seenMap.set(id, now);
-        seenIds.add(id);
-    });
-    saveSeenMap();
+/**
+ * Envoie les IDs de newIdsThisLoad au serveur, puis met à jour l'UI.
+ */
+async function markAllSeen() {
+    if (!newIdsThisLoad.size) return;
+
+    const ids = [...newIdsThisLoad];
+
+    // Mise à jour optimiste de l'UI
+    ids.forEach(id => seenIds.add(id));
     newIdsThisLoad.clear();
-    // Retirer visuellement les badges new
+
     gallery.querySelectorAll('.card.is-new').forEach(card => {
         card.classList.remove('is-new');
         card.querySelector('.badge-new')?.remove();
     });
     updateNewBanner(0);
+
+    // Persistance serveur
+    try {
+        const fd = new FormData();
+        fd.append('action', 'mark');
+        fd.append('ids',    JSON.stringify(ids));
+        const res  = await fetch(SEEN_ENDPOINT, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Erreur inconnue');
+    } catch (e) {
+        // Erreur réseau : l'UI est déjà mise à jour, on laisse en l'état.
+        // Le serveur a peut-être quand même reçu la requête.
+        console.warn('[Pixivorama] Impossible de sauvegarder les IDs vus :', e);
+    }
 }
 
 // ── Bannière "X nouveautés — Marquer comme vues" ──
@@ -211,8 +221,8 @@ function render(works) {
         const thumbUrl = pixivThumb(w.thumb);
 
         // Détection nouveauté (uniquement pour following)
-        const isNew = IS_FOLLOWING && !seenIds.has(w.id);
-        if (isNew) newIdsThisLoad.add(w.id);
+        const isNew = IS_FOLLOWING && !seenIds.has(String(w.id));
+        if (isNew) newIdsThisLoad.add(String(w.id));
 
         const newBadge = isNew ? `<span class="badge-new">Nouveau</span>` : '';
         const newClass = isNew ? ' is-new' : '';
@@ -356,7 +366,6 @@ const orderPickerEl = document.getElementById('orderPicker');
 if (orderPickerEl) {
     // Afficher ou non le period picker selon le défaut
     if (currentOrder === 'popular_d') buildPeriodPicker();
-    // Si date_d, pas de picker période
 
     orderPickerEl.addEventListener('click', e => {
         const btn = e.target.closest('.pill');
@@ -399,4 +408,7 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 btnToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-load(currentPage);
+// ── Démarrage ────────────────────────────────────────────────
+// Pour la galerie "Artistes suivis", on charge d'abord les IDs vus,
+// puis on lance le rendu. Pour les autres galeries, on démarre directement.
+initSeenIds();

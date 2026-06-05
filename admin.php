@@ -230,21 +230,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // --- Préférences d'affichage galeries ---
-    elseif ($action === 'update_gallery_defaults') {
+        elseif ($action === 'update_gallery_defaults') {
         $tab      = 'options';
         $order    = $_POST['def_order']    ?? 'popular_d';
         $period   = $_POST['def_period']   ?? '';
         $per_page = (int)($_POST['def_per_page'] ?? 28);
         $mode     = $_POST['def_mode']     ?? 'safe';
-
-        if (!in_array($order,    ['popular_d', 'date_d'], true))                     $order    = 'popular_d';
-        if (!in_array($period,   ['', 'day', 'week', 'month', '6month', 'year'], true)) $period = '';
-        if (!in_array($per_page, [28, 56], true))                               $per_page = 28;
-        if (!in_array($mode,     ['safe', 'r18', 'all'], true))                      $mode     = 'safe';
-
+        $seen_ttl = (int)($_POST['seen_ttl_days'] ?? 90);
+ 
+        if (!in_array($order,    ['popular_d', 'date_d'], true))                        $order    = 'popular_d';
+        if (!in_array($period,   ['', 'day', 'week', 'month', '6month', 'year'], true)) $period   = '';
+        if (!in_array($per_page, [28, 56], true))                                        $per_page = 28;
+        if (!in_array($mode,     ['safe', 'r18', 'all'], true))                          $mode     = 'safe';
+        if ($seen_ttl < 1 || $seen_ttl > 3650)                                           $seen_ttl = 90;
+ 
         $SETTINGS['gallery_defaults'] = compact('order', 'period', 'per_page', 'mode');
+        $SETTINGS['seen_ttl_days']    = $seen_ttl;
         save_settings($SETTINGS);
         $success = 'Préférences d\'affichage enregistrées.';
+    }
+ 
+    // --- Purge manuelle de la base seen.db ---
+    elseif ($action === 'purge_seen') {
+        $tab     = 'options';
+        $db_file = __DIR__ . '/data/seen.db';
+        if (!file_exists($db_file)) {
+            $success = 'Base de données seen.db inexistante — rien à purger.';
+        } else {
+            try {
+                $db      = new PDO('sqlite:' . $db_file);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $ttl     = (int)($SETTINGS['seen_ttl_days'] ?? 90);
+                $cutoff  = time() - max(1, $ttl) * 86400;
+                $stmt    = $db->prepare('DELETE FROM seen_illusts WHERE seen_at < ?');
+                $stmt->execute([$cutoff]);
+                $deleted = $stmt->rowCount();
+                $success = $deleted > 0
+                    ? $deleted . ' entrée' . ($deleted > 1 ? 's' : '') . ' expirée' . ($deleted > 1 ? 's' : '') . ' supprimée' . ($deleted > 1 ? 's' : '') . '.'
+                    : 'Aucune entrée expirée à supprimer.';
+            } catch (Exception $e) {
+                $error = 'Erreur lors de la purge : ' . $e->getMessage();
+            }
+        }
     }
 
     // --- Tags bloqués personnalisés ---
@@ -797,6 +824,27 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
             </div>
 
+            <!-- Durée de mémorisation (seen.db) -->
+            <div class="field" style="margin-top:1.2rem;margin-bottom:1.4rem;">
+                <label for="seen_ttl_days">
+                    Mémorisation des illustrations vues
+                    <span style="font-size:.55rem;color:var(--text-muted);letter-spacing:.05em;text-transform:none;">
+                        (galerie Artistes suivis)
+                    </span>
+                </label>
+                <div style="display:flex;align-items:center;gap:.7rem;margin-top:.4rem;">
+                    <input type="number" id="seen_ttl_days" name="seen_ttl_days"
+                           min="1" max="3650"
+                           value="<?= (int)($settings['seen_ttl_days'] ?? 90) ?>"
+                           style="width:6rem;">
+                    <span style="font-size:.72rem;color:var(--text-muted);letter-spacing:.06em;">jours</span>
+                </div>
+                <span class="hint">
+                    Les illustrations vues depuis plus de ce nombre de jours sont à nouveau marquées
+                    comme nouvelles. Entre 1 et 3650 jours (défaut : 90).
+                </span>
+            </div>
+
             <button type="submit" class="btn-primary" style="margin-top:0;">Enregistrer les préférences</button>
         </form>
     </section>
@@ -1128,6 +1176,87 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
     function escH(str) {
         return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+
+    <!-- ══ Illustrations vues (seen.db) ══ -->
+    <section class="admin-section" style="margin-top:1.5rem;">
+        <p class="section-title">Illustrations vues</p>
+        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Les illustrations marquées comme vues dans la galerie <em>Artistes suivis</em> sont
+            stockées dans <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">data/seen.db</code>.
+            La purge supprime les entrées plus anciennes que le TTL configuré dans les Options.
+        </p>
+ 
+        <div id="seenDbInfo" style="margin-bottom:1rem;"></div>
+ 
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+            <button class="btn-primary" id="btnSeenStats" style="margin-top:0;" onclick="loadSeenStats()">
+                Afficher les statistiques
+            </button>
+            <button class="btn-add" id="btnPurgeSeen" style="width:auto;padding:.65rem 1.4rem;" onclick="purgeSeen()">
+                Purger maintenant
+            </button>
+        </div>
+ 
+        <div id="seenActionResult" style="display:none;margin-top:1rem;"></div>
+    </section>
+ 
+    <script>
+    // ── Seen.db stats + purge ──
+    async function loadSeenStats() {
+        const btn  = document.getElementById('btnSeenStats');
+        const info = document.getElementById('seenDbInfo');
+        btn.disabled    = true;
+        btn.textContent = 'Chargement…';
+        try {
+            const res  = await fetch('fonctions/seen.php?action=load');
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Erreur');
+            const count = Object.keys(data.seen || {}).length;
+            info.innerHTML = `<div class="alert alert-success" style="margin:0;">
+                <strong>${count}</strong> illustration${count > 1 ? 's' : ''} mémorisée${count > 1 ? 's' : ''}
+                &nbsp;·&nbsp; TTL : <strong>${data.ttl_days}</strong> jour${data.ttl_days > 1 ? 's' : ''}
+            </div>`;
+        } catch (err) {
+            info.innerHTML = `<div class="alert alert-error" style="margin:0;">Erreur : ${escH(err.message)}</div>`;
+        } finally {
+            btn.disabled    = false;
+            btn.textContent = 'Afficher les statistiques';
+        }
+    }
+ 
+    async function purgeSeen() {
+        const ok = await _modal(
+            'Supprimer les entrées expirées de la base <em>seen.db</em> ?<br><br>'
+            + 'Seules les entrées plus anciennes que le TTL configuré seront supprimées.',
+            { confirm: true }
+        );
+        if (!ok) return;
+ 
+        const res    = document.getElementById('seenActionResult');
+        const btn    = document.getElementById('btnPurgeSeen');
+        btn.disabled = true;
+        res.style.display = 'none';
+ 
+        const fd = new FormData();
+        fd.append('action', 'purge_seen');
+        try {
+            const r    = await fetch('admin.php', { method: 'POST', body: fd });
+            const text = await r.text();
+            // Après POST → redirect, on recharge l'onglet
+            location.href = 'admin.php?tab=maintenance&msg=' + encodeURIComponent('Purge effectuée.') + '&mt=success';
+        } catch (err) {
+            res.className   = 'alert alert-error';
+            res.textContent = 'Erreur : ' + err.message;
+            res.style.display = '';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+ 
+    function escH(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     </script>
 

@@ -144,6 +144,7 @@ $admin_defs = get_admin_gallery_defaults($SETTINGS);
 ?>
 <script>
     window.PIXIV_PER_PAGE  = <?= PIXIV_DEFAULT_PER_PAGE ?>;
+    window.PIXIV_ROOT      = '../';
     window.PIXIV_PROXY_URL = '../fonctions/private-proxy.php';
     window.PIXIV_HAS_ORDER   = <?= $has_order  ? 'true' : 'false' ?>;
     window.PIXIV_HAS_PERPAGE = <?= $has_perpage ? 'true' : 'false' ?>;

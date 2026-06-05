@@ -28,6 +28,7 @@
     RewriteEngine On
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^saves/ - [F,L]
+    RewriteRule ^data/ - [F,L]
 </IfModule>
 
 # ── Réécriture et gestion des erreurs ───────────────────────
