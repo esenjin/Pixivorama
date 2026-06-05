@@ -1332,6 +1332,19 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
                 <div id="importGalleryList" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.2rem;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:.6rem;"></div>
 
+                <!-- Illustrations vues -->
+                <div id="importSeenRow" style="display:none;margin-top:.8rem;padding:.6rem .9rem;
+                     background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+                     display:flex;align-items:center;gap:.8rem;">
+                    <input type="checkbox" id="importSeenCheck" style="flex-shrink:0;">
+                    <label for="importSeenCheck" style="font-size:.68rem;color:var(--text-muted);
+                           letter-spacing:.06em;cursor:pointer;line-height:1.5;">
+                        Importer les illustrations vues
+                        (<span class="import-seen-count"></span>)
+                        — fusionne avec les données existantes
+                    </label>
+                </div>
+
                 <button class="btn-primary" id="btnDoImport" style="margin-top:0;" onclick="doImport()">
                     Importer la sélection
                 </button>
@@ -1445,7 +1458,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             const data = await res.json();
             if (data.error) throw new Error(data.error);
             res_el.className = 'alert alert-success';
-            res_el.textContent = `Sauvegarde créée : ${data.file} (${fmtSize(data.size)}, ${data.count} galerie${data.count > 1 ? 's' : ''})`;
+            res_el.textContent = `Sauvegarde créée : ${data.file} (${fmtSize(data.size)}, ${data.count} galerie${data.count > 1 ? 's' : ''}${data.seen_count > 0 ? `, ${data.seen_count} illustration${data.seen_count > 1 ? 's' : ''} vues` : ''})`;
             res_el.style.display = '';
             loadSavesList();
             refreshImportSaveList();
@@ -1515,14 +1528,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         }
     }
 
-    function renderAnalysis(data) {
+        function renderAnalysis(data) {
         const meta = data.meta || {};
         document.getElementById('importMeta').innerHTML =
             `Source : <strong style="color:var(--text)">${escH(data.source)}</strong>`
             + (meta.created_at ? ` · Créée le ${new Date(meta.created_at).toLocaleString('fr-FR', {dateStyle:'short',timeStyle:'short'})}` : '')
             + (meta.version    ? ` · Version ${escH(meta.version)}` : '')
-            + ` · <strong style="color:var(--text)">${data.galleries.length}</strong> galerie${data.galleries.length > 1 ? 's' : ''}`;
-
+            + ` · <strong style="color:var(--text)">${data.galleries.length}</strong> galerie${data.galleries.length > 1 ? 's' : ''}`
+            + (data.has_seen   ? ` · <strong style="color:var(--accent)">${data.seen_count}</strong> illustration${data.seen_count > 1 ? 's' : ''} vues` : '');
+ 
         const TYPE_LABELS = {
             'public': '🌐 Publique',
             'private:tag': '🔒 Privée tags',
@@ -1530,7 +1544,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             'private:bookmark': '🔒 Bookmarks',
             'private:following': '🔒 Artistes suivis',
         };
-
+ 
         document.getElementById('importGalleryList').innerHTML = data.galleries.map((g, i) => `
             <div class="import-row${g.conflict ? ' conflict' : ''}" id="importRow${i}">
                 <input type="checkbox" class="import-row-check" id="importCheck${i}"
@@ -1554,7 +1568,19 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                         : `<span class="new-badge">✓ Nouveau</span>`}
                 </div>
             </div>`).join('');
-
+ 
+        // ── Checkbox seen_data ──
+        const seenRow = document.getElementById('importSeenRow');
+        if (data.has_seen) {
+            seenRow.style.display = '';
+            const cb = document.getElementById('importSeenCheck');
+            cb.checked = true;
+            seenRow.querySelector('.import-seen-count').textContent =
+                `${data.seen_count} illustration${data.seen_count > 1 ? 's' : ''} vues`;
+        } else {
+            seenRow.style.display = 'none';
+        }
+ 
         document.getElementById('importAnalysis').style.display = '';
     }
 
@@ -1616,8 +1642,9 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         btn.disabled = true; btn.textContent = 'Import en cours…';
 
         const fd = new FormData();
-        fd.append('action', 'import');
-        fd.append('selections', JSON.stringify(selections));
+            fd.append('action',      'import');
+            fd.append('selections',  JSON.stringify(selections));
+            fd.append('import_seen', document.getElementById('importSeenCheck')?.checked ? 'true' : 'false');
 
         // Source
         const fileInput = document.getElementById('importFileInput');
@@ -1641,7 +1668,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 + `<em>${escH(r.slug)}</em> — ${escH(r.message)}`
             ).join('<br>');
 
-            resEl.innerHTML = `<strong>${data.success} importée${data.success > 1 ? 's' : ''}${data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : ''}</strong><br><span style="font-size:.65rem;line-height:2;">${lines}</span>`;
+            resEl.innerHTML = `<strong>${data.success} importée${data.success > 1 ? 's' : ''}${data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : ''}${data.seen_imported > 0 ? ` · ${data.seen_imported} ill. vues restaurées` : ''}</strong><br><span style="font-size:.65rem;line-height:2;">${lines}</span>`;
             resEl.style.display = '';
         } catch (err) {
             const resEl = document.getElementById('importResult');
@@ -1677,7 +1704,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
         const resEl = document.getElementById('exportResult');
         resEl.className = 'alert alert-success';
-        resEl.textContent = `Restauration terminée : ${data.count} galerie${data.count > 1 ? 's' : ''} restaurée${data.count > 1 ? 's' : ''}.`;
+        resEl.textContent = `Restauration terminée : ${data.count} galerie${data.count > 1 ? 's' : ''} restaurée${data.count > 1 ? 's' : ''}${data.seen_restored > 0 ? ` · ${data.seen_restored} illustration${data.seen_restored > 1 ? 's' : ''} vues restaurées` : ''}.`;
         resEl.style.display = '';
     }
 
