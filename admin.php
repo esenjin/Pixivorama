@@ -365,7 +365,7 @@ function loginPage(string $error): void { ?>
                 <button type="submit" class="btn-primary">Accéder</button>
             </div>
         </form>
-        <p style="text-align:center;font-size:.62rem;color:var(--text-muted);letter-spacing:.1em;">
+        <p style="text-align:center;font-size:0.82rem;color:var(--text-muted);letter-spacing:.1em;">
             <a href="index.php" style="color:var(--text-muted);text-decoration:none;">← Retour à l'accueil</a>
         </p>
     </div>
@@ -447,7 +447,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                             onclick="toggleSessidVisibility()"
                             style="position:absolute;right:.6rem;background:none;border:none;
                                 cursor:pointer;color:var(--text-muted);padding:.2rem .3rem;
-                                font-size:.75rem;letter-spacing:.05em;transition:color .2s;">
+                                font-size:0.75rem;letter-spacing:.05em;transition:color .2s;">
                         <span id="toggleSessidLabel">Afficher</span>
                     </button>
                 </div>
@@ -465,7 +465,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         <p class="section-title">Galeries existantes</p>
 
         <?php if (empty($galleries)): ?>
-            <p style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:2rem 0;">
+            <p style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:2rem 0;">
                 Aucune galerie pour l'instant. Créez-en une ci-dessous.
             </p>
         <?php else: ?>
@@ -718,7 +718,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     ?>
     <section class="admin-section">
         <p class="section-title">Tags bloqués</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
             Les illustrations portant ces tags sont filtrées des résultats dans toutes les galeries.
             Les tags IA ci-dessous sont actifs par défaut et ne peuvent pas être supprimés.
         </p>
@@ -762,7 +762,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <?php $defs = get_admin_gallery_defaults($settings); ?>
     <section class="admin-section">
         <p class="section-title">Préférences d'affichage</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.6rem;line-height:1.6;">
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.6rem;line-height:1.6;">
             Appliquées uniquement quand vous êtes connecté en administration.
             Les visiteurs voient toujours les valeurs publiques par défaut.
         </p>
@@ -811,7 +811,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <div class="field" style="margin-bottom:0;" id="defPeriodField">
                     <label>
                         Période par défaut
-                        <span style="font-size:.55rem;color:var(--text-muted);letter-spacing:.05em;text-transform:none;">
+                        <span style="font-size:0.78rem;color:var(--text-muted);letter-spacing:.05em;text-transform:none;">
                             (tri Populaires uniquement)
                         </span>
                     </label>
@@ -831,7 +831,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <?php $seen_scope_val = $settings['seen_scope'] ?? 'following'; ?>
             <div class="field" style="margin-top:1.4rem;margin-bottom:.8rem;">
                 <label>Suivi des illustrations vues</label>
-                <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin:.3rem 0 .7rem;line-height:1.6;">
+                <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin:.3rem 0 .7rem;line-height:1.6;">
                     Détermine dans quelles galeries les badges <em>Nouveau</em> et le bouton
                     <em>Marquer comme vues</em> sont affichés (admin uniquement).
                 </p>
@@ -863,12 +863,12 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <label for="seen_ttl_days">
                     Durée de mémorisation
                 </label>
-                <div style="display:flex;align-items:center;gap:.7rem;margin-top:.4rem;">
+                <div style="display:flex;align-items:center;gap:.8rem;margin-top:.4rem;">
                     <input type="number" id="seen_ttl_days" name="seen_ttl_days"
                            min="1" max="3650"
                            value="<?= (int)($settings['seen_ttl_days'] ?? 90) ?>"
-                           style="width:6rem;">
-                    <span style="font-size:.72rem;color:var(--text-muted);letter-spacing:.06em;">jours</span>
+                           class="ttl-input">
+                    <span class="ttl-unit">jours</span>
                 </div>
                 <span class="hint">
                     Les illustrations vues depuis plus de ce nombre de jours sont à nouveau marquées
@@ -886,11 +886,11 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
     <section class="admin-section">
         <p class="section-title">Régénération des galeries</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
-            Recrée les fichiers <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Recrée les fichiers <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
             de toutes les galeries à partir de leurs templates respectifs
-            (<code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_template.php</code> /
-            <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_special.php</code>).
+            (<code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_template.php</code> /
+            <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">_special.php</code>).
             Utile après une mise à jour qui modifie le comportement des galeries.
         </p>
 
@@ -907,8 +907,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         <!-- Barre de progression -->
         <div id="regenProgressWrap" style="display:none;margin-bottom:1.2rem;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem;">
-                <span style="font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);" id="regenStatusLabel">En cours…</span>
-                <span style="font-size:.65rem;color:var(--accent);" id="regenPercent">0 %</span>
+                <span style="font-size:0.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);" id="regenStatusLabel">En cours…</span>
+                <span style="font-size:0.82rem;color:var(--accent);" id="regenPercent">0 %</span>
             </div>
             <div style="background:var(--border);border-radius:2px;height:3px;overflow:hidden;">
                 <div id="regenBar" style="height:100%;background:var(--accent);width:0;transition:width .3s ease;"></div>
@@ -963,15 +963,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
             document.getElementById('regenList').innerHTML = regenGalleries.map(g => {
                 const tplOk = g.template_ok
-                    ? '<span style="color:#5db87a;font-size:.6rem;">✓ OK</span>'
-                    : '<span style="color:#c0776a;font-size:.6rem;">✗ Manquant</span>';
+                    ? '<span style="color:#5db87a;font-size:0.82rem;">✓ OK</span>'
+                    : '<span style="color:#c0776a;font-size:0.82rem;">✗ Manquant</span>';
                 return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:.6rem;align-items:center;
                                     padding:.45rem .6rem;border-radius:var(--radius);background:var(--bg);">
-                    <span style="font-size:.75rem;color:var(--text);">
-                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.95rem;">${escH(g.title)}</span>
-                        <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.4rem;">${escH(g.slug)}</code>
+                    <span style="font-size:0.75rem;color:var(--text);">
+                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.95rem;">${escH(g.title)}</span>
+                        <code style="font-size:0.78rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.4rem;">${escH(g.slug)}</code>
                     </span>
-                    <span style="font-size:.6rem;color:var(--text-muted);white-space:nowrap;">${typeLabels[g.type] || g.type}</span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">${typeLabels[g.type] || g.type}</span>
                     ${tplOk}
                 </div>`;
             }).join('');
@@ -1051,11 +1051,11 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             const row  = document.createElement('div');
             row.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.35rem .8rem;border-bottom:1px solid var(--border);';
             row.innerHTML = `
-                <span style="font-size:.8rem;flex-shrink:0;color:${ok ? '#5db87a' : '#c0776a'};">${ok ? '✓' : '✗'}</span>
-                <span style="flex:1;font-size:.72rem;color:var(--text);">${escH(data.title)}
-                    <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .3rem;border-radius:2px;margin-left:.3rem;">${escH(data.slug)}</code>
+                <span style="font-size:0.8rem;flex-shrink:0;color:${ok ? '#5db87a' : '#c0776a'};">${ok ? '✓' : '✗'}</span>
+                <span style="flex:1;font-size:0.88rem;color:var(--text);">${escH(data.title)}
+                    <code style="font-size:0.78rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .3rem;border-radius:2px;margin-left:.3rem;">${escH(data.slug)}</code>
                 </span>
-                <span style="font-size:.62rem;color:${ok ? '#5db87a' : '#c0776a'};white-space:nowrap;">${escH(data.message)}</span>
+                <span style="font-size:0.82rem;color:${ok ? '#5db87a' : '#c0776a'};white-space:nowrap;">${escH(data.message)}</span>
             `;
             list.appendChild(row);
             list.parentElement.scrollTop = list.parentElement.scrollHeight;
@@ -1092,8 +1092,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <!-- ══ Indicateur de santé des galeries ══ -->
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Santé des galeries</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
-            Vérifie la synchronisation des fichiers <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Vérifie la synchronisation des fichiers <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">.php</code>
             avec leur template, et teste si Pixiv retourne des résultats pour le premier tag de chaque galerie.
         </p>
 
@@ -1114,7 +1114,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             <button class="btn-primary" id="btnHealthCheck" style="margin-top:0;" onclick="runHealthCheck()">
                 Vérifier la santé
             </button>
-            <span id="healthLoading" style="display:none;font-size:.65rem;color:var(--text-muted);letter-spacing:.12em;">
+            <span id="healthLoading" style="display:none;font-size:0.82rem;color:var(--text-muted);letter-spacing:.12em;">
                 Vérification en cours…
             </span>
         </div>
@@ -1157,21 +1157,21 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 const p = PIXIV[r.pixiv_status] || PIXIV.skipped;
 
                 const syncAge = r.dest_mtime && r.tpl_mtime && r.sync_status === 'outdated'
-                    ? ` <span style="font-size:.55rem;opacity:.7;">(+${fmtAge(r.tpl_mtime - r.dest_mtime)})</span>`
+                    ? ` <span style="font-size:0.78rem;opacity:.7;">(+${fmtAge(r.tpl_mtime - r.dest_mtime)})</span>`
                     : '';
 
                 return `<div class="health-row">
                     <div class="health-row-name">
-                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.95rem;color:var(--text);">${escH(r.title)}</span>
-                        <code style="font-size:.58rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.35rem;">${escH(r.slug)}</code>
+                        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text);">${escH(r.title)}</span>
+                        <code style="font-size:0.78rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .35rem;border-radius:2px;margin-left:.35rem;">${escH(r.slug)}</code>
                     </div>
                     <div style="display:flex;align-items:center;gap:.4rem;">
-                        <span style="color:${s.color};font-size:.75rem;">${s.icon}</span>
-                        <span style="font-size:.62rem;color:${s.color};">${s.label}${syncAge}</span>
+                        <span style="color:${s.color};font-size:0.75rem;">${s.icon}</span>
+                        <span style="font-size:0.82rem;color:${s.color};">${s.label}${syncAge}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:.4rem;">
-                        <span style="color:${p.color};font-size:.75rem;">${p.icon}</span>
-                        <span style="font-size:.62rem;color:${p.color};">${escH(r.pixiv_note || r.pixiv_status)}</span>
+                        <span style="color:${p.color};font-size:0.75rem;">${p.icon}</span>
+                        <span style="font-size:0.82rem;color:${p.color};">${escH(r.pixiv_note || r.pixiv_status)}</span>
                     </div>
                 </div>`;
             }).join('');
@@ -1213,9 +1213,9 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <!-- ══ Illustrations vues (seen.db) ══ -->
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Illustrations vues</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
             Les illustrations marquées comme vues dans les galeries (selon le périmètre configuré dans les Options) sont
-            stockées dans <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">data/seen.db</code>.
+            stockées dans <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">data/seen.db</code>.
             La purge supprime les entrées plus anciennes que le TTL configuré dans les Options.
         </p>
  
@@ -1294,9 +1294,9 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <!-- ══ Import / Export ══ -->
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Sauvegardes & Import</p>
-        <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
             Les sauvegardes incluent toutes les galeries publiques et privées (fichiers JSON uniquement).
-            Elles sont stockées dans <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">saves/</code>
+            Elles sont stockées dans <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">saves/</code>
             et non accessibles publiquement.
         </p>
 
@@ -1332,7 +1332,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <!-- Sélection sauvegarde existante -->
                 <div id="importSrcSavePanel">
                     <div id="importSaveList" style="margin-bottom:.8rem;"></div>
-                    <p id="importSaveEmpty" style="display:none;font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;">
+                    <p id="importSaveEmpty" style="display:none;font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;">
                         Aucune sauvegarde disponible. Créez-en une depuis l'onglet "Exporter".
                     </p>
                 </div>
@@ -1340,9 +1340,9 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 <!-- Upload fichier ZIP -->
                 <div id="importSrcUploadPanel" style="display:none;">
                     <label style="display:flex;flex-direction:column;gap:.5rem;">
-                        <span style="font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Fichier ZIP</span>
+                        <span style="font-size:0.82rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Fichier ZIP</span>
                         <input type="file" id="importFileInput" accept=".zip"
-                            style="font-family:'Josefin Sans',sans-serif;font-size:.78rem;color:var(--text);background:var(--bg);
+                            style="font-family:'Josefin Sans',sans-serif;font-size:0.78rem;color:var(--text);background:var(--bg);
                                     border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .7rem;cursor:pointer;">
                     </label>
                     <button class="btn-primary" style="margin-top:.8rem;" onclick="analyzeUpload()">Analyser le fichier</button>
@@ -1351,13 +1351,13 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
             <!-- Récap analyse -->
             <div id="importAnalysis" style="display:none;">
-                <div id="importMeta" style="margin-bottom:1rem;padding:.6rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:.65rem;letter-spacing:.08em;color:var(--text-muted);"></div>
+                <div id="importMeta" style="margin-bottom:1rem;padding:.6rem .9rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:0.82rem;letter-spacing:.08em;color:var(--text-muted);"></div>
 
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.5rem;">
-                    <span style="font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Galeries dans la sauvegarde</span>
+                    <span style="font-size:0.82rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Galeries dans la sauvegarde</span>
                     <div style="display:flex;gap:.5rem;">
-                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:.6rem;" onclick="selectAllImport(true)">Tout cocher</button>
-                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:.6rem;" onclick="selectAllImport(false)">Tout décocher</button>
+                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:0.82rem;" onclick="selectAllImport(true)">Tout cocher</button>
+                        <button class="btn-add" style="width:auto;padding:.3rem .8rem;font-size:0.82rem;" onclick="selectAllImport(false)">Tout décocher</button>
                     </div>
                 </div>
 
@@ -1368,7 +1368,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                      background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
                      display:flex;align-items:center;gap:.8rem;">
                     <input type="checkbox" id="importSeenCheck" style="flex-shrink:0;">
-                    <label for="importSeenCheck" style="font-size:.68rem;color:var(--text-muted);
+                    <label for="importSeenCheck" style="font-size:0.85rem;color:var(--text-muted);
                            letter-spacing:.06em;cursor:pointer;line-height:1.5;">
                         Importer les illustrations vues
                         (<span class="import-seen-count"></span>)
@@ -1435,7 +1435,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             const res  = await fetch('fonctions/backup.php?action=list');
             const data = await res.json();
             if (!data.saves || !data.saves.length) {
-                container.innerHTML = '<p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;">Aucune sauvegarde pour l\'instant.</p>';
+                container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;">Aucune sauvegarde pour l\'instant.</p>';
                 return;
             }
             container.innerHTML = data.saves.map(s => `
@@ -1452,7 +1452,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                     </div>
                 </div>`).join('');
         } catch {
-            container.innerHTML = '<p style="font-size:.68rem;color:#c0776a;">Erreur lors du chargement des sauvegardes.</p>';
+            container.innerHTML = '<p style="font-size:0.85rem;color:#c0776a;">Erreur lors du chargement des sauvegardes.</p>';
         }
     }
 
@@ -1699,7 +1699,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 + `<em>${escH(r.slug)}</em> — ${escH(r.message)}`
             ).join('<br>');
 
-            resEl.innerHTML = `<strong>${data.success} importée${data.success > 1 ? 's' : ''}${data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : ''}${data.seen_imported > 0 ? ` · ${data.seen_imported} ill. vues restaurées` : ''}</strong><br><span style="font-size:.65rem;line-height:2;">${lines}</span>`;
+            resEl.innerHTML = `<strong>${data.success} importée${data.success > 1 ? 's' : ''}${data.errors > 0 ? `, ${data.errors} erreur${data.errors > 1 ? 's' : ''}` : ''}${data.seen_imported > 0 ? ` · ${data.seen_imported} ill. vues restaurées` : ''}</strong><br><span style="font-size:0.82rem;line-height:2;">${lines}</span>`;
             resEl.style.display = '';
         } catch (err) {
             const resEl = document.getElementById('importResult');
@@ -2018,7 +2018,7 @@ function removeBlockedTag(btn) {
     if (list && !list.querySelector('.blocked-tag-row')) {
         const p = document.createElement('p');
         p.id = 'blockedTagsEmpty';
-        p.style.cssText = 'font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;padding:.2rem 0;margin:0;';
+        p.style.cssText = 'font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;padding:.2rem 0;margin:0;';
         p.textContent = 'Aucun tag personnalisé pour l\'instant.';
         list.appendChild(p);
     }
@@ -2271,7 +2271,7 @@ async function confirmMove(slug, title, direction) {
         });
 
         if (!listEl.children.length) {
-            listEl.innerHTML = '<p style="color:var(--text-muted);font-size:.7rem;text-align:center;padding:.5rem 0;">Aucune autre galerie disponible.</p>';
+            listEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;text-align:center;padding:.5rem 0;">Aucune autre galerie disponible.</p>';
         }
 
         modal.style.display = 'flex';
