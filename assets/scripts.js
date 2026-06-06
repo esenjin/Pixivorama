@@ -55,6 +55,94 @@ const tooltip    = document.getElementById('imgTooltip');
     }
 })();
 
+// ── Seen — suivi des illustrations vues (admin uniquement) ────
+//
+//  Activé si window.PIXIV_IS_ADMIN === true ET seen_scope !== 'none'.
+//  seen_scope : 'following' (défaut legacy) | 'all' | 'none'
+//
+//  seenIds        : Set<string> — IDs globalement déjà vus (chargés depuis le serveur)
+//  newIdsThisLoad : Set<string> — IDs nouveaux dans le tag courant (réinitialisé à chaque
+//                                  changement de tag), utilisés pour le bouton "Marquer"
+//
+const IS_ADMIN      = window.PIXIV_IS_ADMIN      === true;
+const SEEN_ENDPOINT = window.PIXIV_SEEN_ENDPOINT || '';
+// 'all' = toutes galeries, 'none' = désactivé, tout autre valeur = inactif
+const SEEN_SCOPE    = window.PIXIV_SEEN_SCOPE    || 'none';
+const SEEN_ACTIVE   = IS_ADMIN && SEEN_SCOPE === 'all' && SEEN_ENDPOINT !== '';
+
+let seenIds        = new Set();
+let seenReady      = false;
+let newIdsThisLoad = new Set();
+
+/**
+ * Charge les IDs vus depuis le serveur.
+ * Appelé une seule fois au premier load().
+ */
+async function initSeenIds() {
+    if (!SEEN_ACTIVE) { seenReady = true; return; }
+    try {
+        const res  = await fetch(SEEN_ENDPOINT + '?action=load');
+        const data = await res.json();
+        if (data.ok && data.seen) seenIds = new Set(Object.keys(data.seen));
+    } catch (e) {
+        console.warn('[Pixivorama] Impossible de charger les IDs vus :', e);
+    }
+    seenReady = true;
+}
+
+/**
+ * Envoie au serveur les IDs nouveaux du tag courant et met à jour l'UI.
+ * Seuls les IDs de newIdsThisLoad (tag actif) sont marqués.
+ */
+async function markAllSeen() {
+    if (!newIdsThisLoad.size) return;
+
+    const ids = [...newIdsThisLoad];
+
+    // Mise à jour optimiste de l'UI
+    ids.forEach(id => seenIds.add(id));
+    newIdsThisLoad.clear();
+    gallery.querySelectorAll('.card.is-new').forEach(card => {
+        card.classList.remove('is-new');
+        card.querySelector('.badge-new')?.remove();
+    });
+    updateNewBanner(0);
+
+    // Persistance serveur
+    try {
+        const fd = new FormData();
+        fd.append('action', 'mark');
+        fd.append('ids', JSON.stringify(ids));
+        const res  = await fetch(SEEN_ENDPOINT, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Erreur inconnue');
+    } catch (e) {
+        console.warn('[Pixivorama] Impossible de sauvegarder les IDs vus :', e);
+    }
+}
+
+/**
+ * Affiche ou masque la bannière "X nouvelles — Marquer comme vues".
+ */
+function updateNewBanner(count) {
+    let banner = document.getElementById('newBanner');
+    if (count === 0) { banner?.remove(); return; }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'newBanner';
+        banner.className = 'new-banner';
+        gallery.parentNode.insertBefore(banner, gallery);
+    }
+    banner.innerHTML = `
+        <span class="new-banner-count">
+            <span class="new-banner-dot"></span>
+            ${count} nouvelle${count > 1 ? 's' : ''} illustration${count > 1 ? 's' : ''}
+        </span>
+        <button class="new-banner-btn" id="markSeenBtn">Marquer comme vues</button>
+    `;
+    document.getElementById('markSeenBtn').addEventListener('click', markAllSeen);
+}
+
 // ── Squelettes de chargement ──
 function showSkeletons(n = 12) {
     gallery.innerHTML = Array.from({length: n}, () => `
@@ -68,6 +156,13 @@ function showSkeletons(n = 12) {
 // ── Chargement principal ──
 async function load(tag, page) {
     if (loading) return;
+
+    // Initialiser les IDs vus au tout premier appel (une seule fois)
+    if (!seenReady) await initSeenIds();
+
+    // Réinitialiser les nouveautés à chaque chargement de tag/page
+    newIdsThisLoad = new Set();
+
     loading = true;
     pagination.style.display = 'none';
     statusBar.textContent = 'Chargement…';
@@ -104,6 +199,7 @@ async function load(tag, page) {
 function render(works) {
     if (!works.length) {
         gallery.innerHTML = `<div class="error-msg" style="grid-column:1/-1">Aucune illustration trouvée.</div>`;
+        if (SEEN_ACTIVE) updateNewBanner(0);
         return;
     }
     gallery.innerHTML = works.map((w, i) => {
@@ -114,9 +210,17 @@ function render(works) {
         const r18Badge  = w.xRestrict  >= 1 ? `<span class="badge-r18">18+</span>`  : '';
         const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
         const thumbUrl = pixivThumb(w.thumb);
+
+        // Détection nouveauté (admin uniquement, scope 'all')
+        const isNew    = SEEN_ACTIVE && !seenIds.has(String(w.id));
+        if (isNew) newIdsThisLoad.add(String(w.id));
+        const newBadge = isNew ? `<span class="badge-new">Nouveau</span>` : '';
+        const newClass = isNew ? ' is-new' : '';
+
         return `
-        <a class="card" href="${pixivUrl}" target="_blank" rel="noopener"
+        <a class="card${newClass}" href="${pixivUrl}" target="_blank" rel="noopener"
            style="animation-delay:${delay}ms"
+           data-id="${escHtml(String(w.id))}"
            data-title="${escHtml(w.title)}"
            data-artist="${escHtml(w.userName)}">
             <div class="thumb-wrap">
@@ -124,12 +228,15 @@ function render(works) {
                 ${pages}
                 ${r18Badge}
                 ${gifBadge}
+                ${newBadge}
             </div>
             <div class="card-info">
                 <div class="card-artist">${escHtml(w.userName)}</div>
             </div>
         </a>`;
     }).join('');
+
+    if (SEEN_ACTIVE) updateNewBanner(newIdsThisLoad.size);
     attachTooltips();
 }
 

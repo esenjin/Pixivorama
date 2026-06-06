@@ -151,6 +151,11 @@ $admin_defs = get_admin_gallery_defaults($SETTINGS);
     window.PIXIV_HAS_MODE    = <?= $has_mode    ? 'true' : 'false' ?>;
     window.PIXIV_EXTRA_PARAMS = 'type=<?= htmlspecialchars($gallery_type) ?>';
     window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
+    window.PIXIV_SEEN_SCOPE  = <?= json_encode(
+        in_array($SETTINGS['seen_scope'] ?? 'following', ['following','all','none'], true)
+            ? $SETTINGS['seen_scope']
+            : 'following'
+    ) ?>;
 </script>
 <script src="../assets/pagination.js"></script>
 <script src="../assets/scripts-special.js"></script>

@@ -4,6 +4,13 @@
 //  Page publique — aucune authentification requise.
 // ============================================================
 require_once __DIR__ . '/../config.php';
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+$_recherche_is_admin  = !empty($_SESSION['admin_ok']);
+$_recherche_seen_scope = $SETTINGS['seen_scope'] ?? 'following';
+if (!in_array($_recherche_seen_scope, ['following', 'all', 'none'], true)) {
+    $_recherche_seen_scope = 'following';
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -113,6 +120,77 @@ require_once __DIR__ . '/../config.php';
 <script src="../assets/pagination.js"></script>
 <script>
 const PROXY_URL = '../fonctions/pixiv-proxy.php';
+
+<?php if ($_recherche_is_admin && $_recherche_seen_scope === 'all'): ?>
+// ── Seen (admin, scope = all) ──
+const IS_ADMIN      = true;
+const SEEN_ENDPOINT = '../fonctions/seen.php';
+const SEEN_SCOPE    = 'all';
+const SEEN_ACTIVE   = true;
+
+let seenIds        = new Set();
+let seenReady      = false;
+let newIdsThisLoad = new Set();
+
+async function initSeenIds() {
+    try {
+        const res  = await fetch(SEEN_ENDPOINT + '?action=load');
+        const data = await res.json();
+        if (data.ok && data.seen) seenIds = new Set(Object.keys(data.seen));
+    } catch (e) {
+        console.warn('[Pixivorama] Impossible de charger les IDs vus :', e);
+    }
+    seenReady = true;
+}
+
+async function markAllSeen() {
+    if (!newIdsThisLoad.size) return;
+    const ids = [...newIdsThisLoad];
+    ids.forEach(id => seenIds.add(id));
+    newIdsThisLoad.clear();
+    gallery.querySelectorAll('.card.is-new').forEach(card => {
+        card.classList.remove('is-new');
+        card.querySelector('.badge-new')?.remove();
+    });
+    updateNewBanner(0);
+    try {
+        const fd = new FormData();
+        fd.append('action', 'mark');
+        fd.append('ids', JSON.stringify(ids));
+        await fetch(SEEN_ENDPOINT, { method: 'POST', body: fd });
+    } catch (e) {
+        console.warn('[Pixivorama] Impossible de sauvegarder les IDs vus :', e);
+    }
+}
+
+function updateNewBanner(count) {
+    let banner = document.getElementById('newBanner');
+    if (count === 0) { banner?.remove(); return; }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'newBanner';
+        banner.className = 'new-banner';
+        gallery.parentNode.insertBefore(banner, gallery);
+    }
+    banner.innerHTML = `
+        <span class="new-banner-count">
+            <span class="new-banner-dot"></span>
+            ${count} nouvelle${count > 1 ? 's' : ''} illustration${count > 1 ? 's' : ''}
+        </span>
+        <button class="new-banner-btn" id="markSeenBtn">Marquer comme vues</button>
+    `;
+    document.getElementById('markSeenBtn').addEventListener('click', markAllSeen);
+}
+<?php else: ?>
+// Seen désactivé pour cette session / ce scope
+const IS_ADMIN   = false;
+const SEEN_ACTIVE = false;
+let seenIds        = new Set();
+let seenReady      = true;
+let newIdsThisLoad = new Set();
+function initSeenIds()    { return Promise.resolve(); }
+function updateNewBanner() {}
+<?php endif; ?>
 
 // ── Proxy d'images : pixiv.cat en principal, pixiv.re en fallback ──
 function pixivThumb(url) {
@@ -254,6 +332,13 @@ function showSkeletons(n = 12) {
 // ── Chargement ──
 async function load(tag, page) {
     if (loading) return;
+
+    // Initialiser les IDs vus au tout premier appel (admin, scope=all uniquement)
+    if (SEEN_ACTIVE && !seenReady) await initSeenIds();
+
+    // Réinitialiser les nouveautés à chaque chargement de tag/page
+    newIdsThisLoad = new Set();
+
     loading = true;
     pagination.style.display = 'none';
     statusBar.textContent = 'Chargement…';
@@ -287,6 +372,7 @@ async function load(tag, page) {
 function render(works) {
     if (!works || !works.length) {
         gallery.innerHTML = `<div class="error-msg" style="grid-column:1/-1">Aucune illustration trouvée pour ce tag.</div>`;
+        if (SEEN_ACTIVE) updateNewBanner(0);
         return;
     }
     gallery.innerHTML = works.map((w, i) => {
@@ -296,9 +382,16 @@ function render(works) {
         const r18Badge  = w.xRestrict  >= 1 ? `<span class="badge-r18">18+</span>`  : '';
         const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
         const thumbUrl = pixivThumb(w.thumb);
+
+        const isNew    = SEEN_ACTIVE && !seenIds.has(String(w.id));
+        if (isNew) newIdsThisLoad.add(String(w.id));
+        const newBadge = isNew ? `<span class="badge-new">Nouveau</span>` : '';
+        const newClass = isNew ? ' is-new' : '';
+
         return `
-        <a class="card" href="${pixivUrl}" target="_blank" rel="noopener"
+        <a class="card${newClass}" href="${pixivUrl}" target="_blank" rel="noopener"
            style="animation-delay:${delay}ms"
+           data-id="${escHtml(String(w.id))}"
            data-title="${escHtml(w.title)}"
            data-artist="${escHtml(w.userName)}">
             <div class="thumb-wrap">
@@ -306,12 +399,15 @@ function render(works) {
                 ${pages}
                 ${r18Badge}
                 ${gifBadge}
+                ${newBadge}
             </div>
             <div class="card-info">
                 <div class="card-artist">${escHtml(w.userName)}</div>
             </div>
         </a>`;
     }).join('');
+
+    if (SEEN_ACTIVE) updateNewBanner(newIdsThisLoad.size);
     attachTooltips();
 }
 

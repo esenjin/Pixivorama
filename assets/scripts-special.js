@@ -31,10 +31,19 @@ let loading        = false;
 
 // ── Gestion des IDs vus (SQLite via seen.php) ────────────────
 //
+//  SEEN_SCOPE   : 'following' | 'all' | 'none' — depuis les réglages admin
+//  IS_SEEN_ACTIVE : true si le suivi est activé pour cette galerie
 //  seenIds  : Set<string>   — IDs déjà vus (chargés depuis le serveur)
 //  seenReady: boolean       — true une fois le chargement initial terminé
 //
 const SEEN_ENDPOINT = (window.PIXIV_ROOT || '') + 'fonctions/seen.php';
+const SEEN_SCOPE    = window.PIXIV_SEEN_SCOPE || 'following';
+
+// Actif si : scope=all → toutes galeries spéciales
+//            scope=following → uniquement la galerie "Artistes suivis"
+//            scope=none → jamais
+const IS_SEEN_ACTIVE = SEEN_SCOPE === 'all'
+    || (SEEN_SCOPE === 'following' && IS_FOLLOWING);
 
 let seenIds  = new Set();
 let seenReady = false;
@@ -73,10 +82,10 @@ const tooltip    = document.getElementById('imgTooltip');
 
 /**
  * Charge les IDs vus depuis le serveur (seen.php).
- * Pour les galeries non-following, on ne charge pas et on démarre directement.
+ * Si le suivi n'est pas actif pour cette galerie, démarre directement.
  */
 async function initSeenIds() {
-    if (!IS_FOLLOWING) {
+    if (!IS_SEEN_ACTIVE) {
         seenReady = true;
         load(currentPage);
         return;
@@ -186,8 +195,8 @@ async function load(page) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        // Sur la 1ère page, réinitialiser les nouveautés de cette session
-        if (page === 1) newIdsThisLoad = new Set();
+        // Réinitialiser les nouveautés à chaque chargement
+        newIdsThisLoad = new Set();
 
         render(data.works);
         updateStatus(data.total, page, data.perPage);
@@ -208,7 +217,7 @@ async function load(page) {
 function render(works) {
     if (!works || !works.length) {
         gallery.innerHTML = `<div class="error-msg" style="grid-column:1/-1">Aucune illustration trouvée.</div>`;
-        if (IS_FOLLOWING) updateNewBanner(0);
+        if (IS_SEEN_ACTIVE) updateNewBanner(0);
         return;
     }
 
@@ -220,8 +229,8 @@ function render(works) {
         const gifBadge  = w.illustType === 2 ? `<span class="badge-gif">GIF</span>`  : '';
         const thumbUrl = pixivThumb(w.thumb);
 
-        // Détection nouveauté (uniquement pour following)
-        const isNew = IS_FOLLOWING && !seenIds.has(String(w.id));
+        // Détection nouveauté selon le scope configuré
+        const isNew = IS_SEEN_ACTIVE && !seenIds.has(String(w.id));
         if (isNew) newIdsThisLoad.add(String(w.id));
 
         const newBadge = isNew ? `<span class="badge-new">Nouveau</span>` : '';
@@ -247,7 +256,7 @@ function render(works) {
     }).join('');
 
     // Mettre à jour la bannière avec le nombre de nouvelles illustrations
-    if (IS_FOLLOWING) updateNewBanner(newIdsThisLoad.size);
+    if (IS_SEEN_ACTIVE) updateNewBanner(newIdsThisLoad.size);
 
     attachTooltips();
 }

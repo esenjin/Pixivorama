@@ -231,21 +231,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- Préférences d'affichage galeries ---
         elseif ($action === 'update_gallery_defaults') {
-        $tab      = 'options';
-        $order    = $_POST['def_order']    ?? 'popular_d';
-        $period   = $_POST['def_period']   ?? '';
-        $per_page = (int)($_POST['def_per_page'] ?? 28);
-        $mode     = $_POST['def_mode']     ?? 'safe';
-        $seen_ttl = (int)($_POST['seen_ttl_days'] ?? 90);
+        $tab        = 'options';
+        $order      = $_POST['def_order']    ?? 'popular_d';
+        $period     = $_POST['def_period']   ?? '';
+        $per_page   = (int)($_POST['def_per_page'] ?? 28);
+        $mode       = $_POST['def_mode']     ?? 'safe';
+        $seen_ttl   = (int)($_POST['seen_ttl_days'] ?? 90);
+        $seen_scope = $_POST['seen_scope']   ?? 'following';
  
-        if (!in_array($order,    ['popular_d', 'date_d'], true))                        $order    = 'popular_d';
-        if (!in_array($period,   ['', 'day', 'week', 'month', '6month', 'year'], true)) $period   = '';
-        if (!in_array($per_page, [28, 56], true))                                        $per_page = 28;
-        if (!in_array($mode,     ['safe', 'r18', 'all'], true))                          $mode     = 'safe';
-        if ($seen_ttl < 1 || $seen_ttl > 3650)                                           $seen_ttl = 90;
+        if (!in_array($order,      ['popular_d', 'date_d'], true))                        $order      = 'popular_d';
+        if (!in_array($period,     ['', 'day', 'week', 'month', '6month', 'year'], true)) $period     = '';
+        if (!in_array($per_page,   [28, 56], true))                                        $per_page   = 28;
+        if (!in_array($mode,       ['safe', 'r18', 'all'], true))                          $mode       = 'safe';
+        if ($seen_ttl < 1 || $seen_ttl > 3650)                                             $seen_ttl   = 90;
+        if (!in_array($seen_scope, ['following', 'all', 'none'], true))                    $seen_scope = 'following';
  
         $SETTINGS['gallery_defaults'] = compact('order', 'period', 'per_page', 'mode');
         $SETTINGS['seen_ttl_days']    = $seen_ttl;
+        $SETTINGS['seen_scope']       = $seen_scope;
         save_settings($SETTINGS);
         $success = 'Préférences d\'affichage enregistrées.';
     }
@@ -824,13 +827,41 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
 
             </div>
 
+            <!-- Périmètre du suivi des illustrations vues -->
+            <?php $seen_scope_val = $settings['seen_scope'] ?? 'following'; ?>
+            <div class="field" style="margin-top:1.4rem;margin-bottom:.8rem;">
+                <label>Suivi des illustrations vues</label>
+                <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin:.3rem 0 .7rem;line-height:1.6;">
+                    Détermine dans quelles galeries les badges <em>Nouveau</em> et le bouton
+                    <em>Marquer comme vues</em> sont affichés (admin uniquement).
+                </p>
+                <div class="control-pills" style="flex-wrap:wrap;gap:4px;">
+                    <button type="button"
+                            class="pill <?= $seen_scope_val === 'following' ? 'active' : '' ?>"
+                            data-value="following"
+                            onclick="pickAdminPref(this,'seen_scope')">
+                        Artistes suivis uniquement
+                    </button>
+                    <button type="button"
+                            class="pill <?= $seen_scope_val === 'all' ? 'active' : '' ?>"
+                            data-value="all"
+                            onclick="pickAdminPref(this,'seen_scope')">
+                        Toutes les galeries
+                    </button>
+                    <button type="button"
+                            class="pill <?= $seen_scope_val === 'none' ? 'active' : '' ?>"
+                            data-value="none"
+                            onclick="pickAdminPref(this,'seen_scope')">
+                        Désactivé
+                    </button>
+                </div>
+                <input type="hidden" name="seen_scope" id="seen_scope" value="<?= htmlspecialchars($seen_scope_val) ?>">
+            </div>
+
             <!-- Durée de mémorisation (seen.db) -->
-            <div class="field" style="margin-top:1.2rem;margin-bottom:1.4rem;">
+            <div class="field" style="margin-top:1rem;margin-bottom:1.4rem;">
                 <label for="seen_ttl_days">
-                    Mémorisation des illustrations vues
-                    <span style="font-size:.55rem;color:var(--text-muted);letter-spacing:.05em;text-transform:none;">
-                        (galerie Artistes suivis)
-                    </span>
+                    Durée de mémorisation
                 </label>
                 <div style="display:flex;align-items:center;gap:.7rem;margin-top:.4rem;">
                     <input type="number" id="seen_ttl_days" name="seen_ttl_days"
@@ -1183,7 +1214,7 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Illustrations vues</p>
         <p style="font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
-            Les illustrations marquées comme vues dans la galerie <em>Artistes suivis</em> sont
+            Les illustrations marquées comme vues dans les galeries (selon le périmètre configuré dans les Options) sont
             stockées dans <code style="font-size:.65rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">data/seen.db</code>.
             La purge supprime les entrées plus anciennes que le TTL configuré dans les Options.
         </p>

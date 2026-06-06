@@ -26,6 +26,19 @@ $is_private  = $is_private  ?? false;
 $footer_links = $footer_links ?? [];
 $admin_defs  = $admin_defs  ?? null;
 $private_home_href = $private_home_href ?? '../private-home.php';
+
+// ── Seen scope — périmètre du suivi des illustrations vues ──
+// Résolu depuis settings.json : 'following' | 'all' | 'none'
+// Transmis au JS uniquement si l'admin est connecté ($admin_defs !== null).
+$seen_scope = $SETTINGS['seen_scope'] ?? 'following';
+if (!in_array($seen_scope, ['following', 'all', 'none'], true)) {
+    $seen_scope = 'following';
+}
+
+// Chemin relatif vers fonctions/seen.php depuis le fichier courant.
+// $assets_path pointe vers assets/ → le dossier fonctions/ est au même niveau.
+$seen_endpoint = rtrim($assets_path ?? '../assets/', '/');
+$seen_endpoint = substr($seen_endpoint, 0, strrpos($seen_endpoint, '/') + 1) . 'fonctions/seen.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -134,12 +147,15 @@ $private_home_href = $private_home_href ?? '../private-home.php';
 </footer>
 
 <script>
-    window.PIXIV_PER_PAGE    = <?= PIXIV_DEFAULT_PER_PAGE ?>;
-    window.PIXIV_INITIAL_TAG = <?= json_encode($characters[0]['tag']) ?>;
-    window.PIXIV_PROXY_URL   = <?= json_encode($proxy_url) ?>;
+    window.PIXIV_PER_PAGE     = <?= PIXIV_DEFAULT_PER_PAGE ?>;
+    window.PIXIV_INITIAL_TAG  = <?= json_encode($characters[0]['tag']) ?>;
+    window.PIXIV_PROXY_URL    = <?= json_encode($proxy_url) ?>;
     window.PIXIV_EXTRA_PARAMS = <?= json_encode($extra_params ?? '') ?>;
     <?php if ($admin_defs): ?>
-    window.PIXIV_DEFAULTS    = <?= json_encode($admin_defs) ?>;
+    window.PIXIV_DEFAULTS     = <?= json_encode($admin_defs) ?>;
+    window.PIXIV_IS_ADMIN     = true;
+    window.PIXIV_SEEN_ENDPOINT = <?= json_encode($seen_endpoint) ?>;
+    window.PIXIV_SEEN_SCOPE   = <?= json_encode($seen_scope) ?>;
     <?php endif; ?>
 </script>
 <script src="<?= htmlspecialchars($assets_path ?? '../assets/') ?>pagination.js"></script>
