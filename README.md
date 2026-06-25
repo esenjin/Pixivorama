@@ -114,6 +114,10 @@ La page `galleries/recherche.php` permet de rechercher n'importe quel tag Pixiv 
 - Contenu 18+ (toggle, galeries publiques et recherche libre uniquement)
 - Illustrations IA exclues par défaut
 
+## Wiki
+
+- [Bien choisir ses tags Pixiv](https://git.crystalyx.net/Esenjin_Asakha/Pixivorama/wiki/Bien-choisir-ses-tags-Pixiv)
+
 ## Administration
 
 L'interface (`admin.php`) est organisée en quatre onglets :
