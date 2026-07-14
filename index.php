@@ -20,6 +20,23 @@ $home_title   = $SETTINGS['home_title']            ?? 'Galeries';
 $home_desc    = $SETTINGS['home_description']      ?? 'Illustrations Pixiv par personnage';
 $home_fl_label = $SETTINGS['home_footer_link_label'] ?? '';
 $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
+
+// ── Aperçus : lecture des snapshots pré-résolus ──────────────
+//  On lit le pool de chaque galerie depuis cache/previews/{slug}.json
+//  (aucun appel Pixiv ici). Les snapshots absents ou périmés (> 24 h)
+//  sont régénérés en arrière-plan, sans bloquer le rendu de la page.
+
+$preview_pools = [];   // slug => [url, url, ...]
+$stale_slugs   = [];   // snapshots à rafraîchir en arrière-plan
+
+foreach ($galleries as $g) {
+    $slug = $g['slug'];
+    $preview_pools[$slug] = load_preview_pool($slug);
+    if (preview_is_stale($slug)) {
+        $stale_slugs[] = $slug;
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -62,9 +79,9 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
     <a class="gallery-card"
        href="galleries/<?= htmlspecialchars($g['slug']) ?>.php"
        data-slug="<?= htmlspecialchars($g['slug']) ?>"
-       data-tags="<?= htmlspecialchars(json_encode(array_column($g['characters'], 'tag'))) ?>">
+       data-pool="<?= htmlspecialchars(json_encode($preview_pools[$g['slug']] ?? [], JSON_UNESCAPED_SLASHES)) ?>">
 
-        <!-- Mosaïque (remplie par JS) -->
+        <!-- Mosaïque (animée par JS à partir du pool pré-résolu) -->
         <div class="gc-mosaic" id="mosaic-<?= htmlspecialchars($g['slug']) ?>">
             <?php for ($i = 0; $i < 6; $i++): ?>
             <div class="gc-mosaic-placeholder"></div>
@@ -121,74 +138,41 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
 </footer>
 
 <script>
-/* ── Chargement des aperçus + carousel dynamique ── */
-(async function loadPreviews() {
-    const INTERVAL   = 4000;
-    const MAX_TAGS   = 6;
-    const IMGS_PER_TAG = 2; // → 12 images max au total
+/* ── Aperçus : animation du carousel à partir du pool pré-résolu ──
+   Les URLs sont déjà présentes dans data-pool (résolues côté serveur,
+   source i.pixiv.cat). Aucun appel réseau vers Pixiv ici : on précharge
+   les vignettes, puis on anime. Chaque carte ne démarre qu'à son entrée
+   dans le viewport (IntersectionObserver) pour alléger le chargement. */
+(function () {
+    const INTERVAL = 4000;
 
-    const cards = document.querySelectorAll('.gallery-card[data-slug]');
-
-    for (const card of cards) {
+    function startCard(card) {
         const slug = card.dataset.slug;
-        let tags;
-        try { tags = JSON.parse(card.dataset.tags); } catch { continue; }
-        if (!tags.length) continue;
-
-        // Sélectionner au plus MAX_TAGS tags au hasard
-        const chosen = [...tags].sort(() => Math.random() - .5).slice(0, MAX_TAGS);
-
-        // Charger tous les tags EN PARALLÈLE
-        const results = await Promise.all(chosen.map(async tag => {
-            try {
-                const res  = await fetch(`fonctions/pixiv-proxy.php?tag=${encodeURIComponent(tag)}&page=1&per_page=28&order=popular_d&mode=safe&gallery=${encodeURIComponent(slug)}`);
-                const data = await res.json();
-                if (!data.works?.length) return [];
-                return data.works
-                    .sort(() => Math.random() - .5)
-                    .slice(0, IMGS_PER_TAG)
-                    .map(w => (w.thumb || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'));
-            } catch { return []; }
-        }));
-
-        // Round-robin inter-tags pour construire le pool final
-        const pool = [];
-        const seen = new Set();
-        const maxLen = Math.max(...results.map(r => r.length));
-        for (let i = 0; i < maxLen; i++) {
-            for (const urls of results) {
-                if (i < urls.length && !seen.has(urls[i])) {
-                    seen.add(urls[i]);
-                    pool.push(urls[i]);
-                }
-            }
-        }
-
-        if (pool.length < 6) {
-            // Fallback : afficher un message discret sur la card si aucune image n'a pu être chargée
-            const mosaic = document.getElementById('mosaic-' + slug);
-            if (mosaic) {
-                mosaic.innerHTML = '';
-                mosaic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
-                mosaic.innerHTML = `<span style="
-                    font-family:'Josefin Sans',sans-serif;
-                    font-size:.6rem;
-                    letter-spacing:.18em;
-                    text-transform:uppercase;
-                    color:rgba(122,120,112,.5);
-                    text-align:center;
-                    padding:1rem;
-                    pointer-events:none;
-                ">Aperçu indisponible</span>`;
-            }
-            continue;
-        }
-
-        // Pré-charger
-        pool.forEach(url => { const img = new Image(); img.src = url; });
+        let pool;
+        try { pool = JSON.parse(card.dataset.pool || '[]'); } catch { pool = []; }
 
         const mosaic = document.getElementById('mosaic-' + slug);
-        if (!mosaic) continue;
+        if (!mosaic) return;
+
+        if (pool.length < 6) {
+            // Snapshot vide ou insuffisant : message discret, connu dès le rendu.
+            mosaic.innerHTML = '';
+            mosaic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+            mosaic.innerHTML = `<span style="
+                font-family:'Josefin Sans',sans-serif;
+                font-size:.6rem;
+                letter-spacing:.18em;
+                text-transform:uppercase;
+                color:rgba(122,120,112,.5);
+                text-align:center;
+                padding:1rem;
+                pointer-events:none;
+            ">Aperçu indisponible</span>`;
+            return;
+        }
+
+        // Pré-charger le pool.
+        pool.forEach(url => { const img = new Image(); img.src = url; });
 
         mosaic.innerHTML = '';
         const cells   = [];
@@ -203,6 +187,8 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
             [imgA, imgB].forEach(img => {
                 img.className = 'gc-mosaic-img';
                 img.alt       = '';
+                img.loading   = 'lazy';
+                img.decoding  = 'async';
                 img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.8);transition:opacity .9s ease;';
                 img.onerror = function() {
                     if (this.src.includes('pixiv.cat')) {
@@ -224,7 +210,7 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
             cells.push({ imgA, imgB, front: 'A', current: url });
         }
 
-        // Carousel
+        // Carousel (rotation à partir du pool figé).
         setTimeout(() => {
             setInterval(() => {
                 const cell      = cells[Math.floor(Math.random() * cells.length)];
@@ -254,8 +240,48 @@ $home_fl_url   = $SETTINGS['home_footer_link_url']   ?? '';
             }, INTERVAL);
         }, Math.random() * INTERVAL);
     }
+
+    const cards = document.querySelectorAll('.gallery-card[data-slug]');
+
+    if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    startCard(entry.target);
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { rootMargin: '200px' });
+        cards.forEach(c => io.observe(c));
+    } else {
+        cards.forEach(startCard);
+    }
 })();
 </script>
 
 </body>
 </html>
+<?php
+// ── Refresh paresseux des snapshots périmés (tâche de fond) ──
+//  La page est déjà entièrement envoyée. On ferme la connexion avec le
+//  visiteur, puis on régénère les snapshots publics périmés (> 24 h) pour
+//  que le prochain visiteur bénéficie d'aperçus frais. Aucun impact sur le
+//  temps de chargement perçu.
+
+if (!empty($stale_slugs)) {
+    // Terminer la réponse HTTP sans faire attendre le client.
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        @ob_end_flush();
+        @flush();
+    }
+    ignore_user_abort(true);
+    @set_time_limit(0);
+
+    foreach ($stale_slugs as $slug) {
+        // regenerate_gallery_preview() ne touche que les galeries publiques
+        // et conserve l'ancien snapshot si Pixiv renvoie un pool vide.
+        regenerate_gallery_preview($slug);
+    }
+}

@@ -13,7 +13,7 @@
 define('SETTINGS_FILE', __DIR__ . '/settings.json');
 define('GALLERIES_DIR', __DIR__ . '/galleries');
 
-define('APP_VERSION', '1.4.6');
+define('APP_VERSION', '1.4.7');
 
 // ── Constantes Pixiv ────────────────────────────────────────
 
@@ -21,6 +21,16 @@ define('PIXIV_DEFAULT_PER_PAGE', 28);
 define('PIXIV_DEFAULT_ORDER',    'popular_d');
 define('PIXIV_DEFAULT_MODE',     'safe');
 define('PIXIV_AI_TYPE',          1);
+
+// ── Aperçus de galeries (snapshots) ─────────────────────────
+//  Les vignettes affichées sur la page d'accueil et l'espace
+//  perso sont pré-résolues côté serveur et stockées dans
+//  cache/previews/. Voir includes/galleries.php pour les helpers.
+
+define('PREVIEWS_DIR',       __DIR__ . '/cache/previews');
+define('PREVIEWS_TTL',       86400); // 24 h avant de considérer un snapshot périmé
+define('PREVIEWS_POOL_SIZE', 20);    // nombre d'URLs de vignettes par galerie
+define('PREVIEWS_MAX_TAGS',  6);     // tags échantillonnés par galerie
 
 // ── Réglages dynamiques ──────────────────────────────────────
 

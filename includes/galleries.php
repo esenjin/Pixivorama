@@ -70,6 +70,8 @@ function delete_gallery(string $slug): bool {
     $ok   = true;
     if (file_exists($json)) $ok = unlink($json) && $ok;
     if (file_exists($php))  $ok = unlink($php)  && $ok;
+    // Nettoyer le snapshot d'aperçu associé, s'il existe.
+    if (function_exists('delete_preview_pool')) delete_preview_pool($slug);
     return $ok;
 }
 
@@ -130,4 +132,368 @@ function get_admin_gallery_defaults(array $settings): array {
         'mode'     => in_array($saved['mode']     ?? '', ['safe', 'r18', 'all'], true)
                         ? $saved['mode'] : PIXIV_DEFAULT_MODE,
     ];
+}
+
+// ── Aperçus de galeries (snapshots) ──────────────────────────
+//
+//  Un snapshot est un fichier cache/previews/{slug}.json contenant
+//  un pool d'URLs de vignettes déjà résolues (source i.pixiv.cat).
+//  La page d'accueil / l'espace perso les lisent directement et
+//  animent le carousel côté client, sans appeler Pixiv en direct.
+//
+//  Format : { "generated_at": <timestamp>, "pool": ["https://...", ...] }
+
+/**
+ * Chemin du snapshot d'une galerie.
+ */
+function preview_file(string $slug): string {
+    return PREVIEWS_DIR . '/' . $slug . '.json';
+}
+
+/**
+ * S'assure que le dossier des snapshots existe et est protégé.
+ */
+function ensure_previews_dir(): void {
+    if (!is_dir(PREVIEWS_DIR)) {
+        mkdir(PREVIEWS_DIR, 0755, true);
+    }
+    // cache/ est déjà protégé, mais on double la sécurité si le dossier
+    // est créé indépendamment.
+    $ht = dirname(PREVIEWS_DIR) . '/.htaccess';
+    if (!file_exists($ht)) {
+        @file_put_contents($ht, "Order allow,deny\nDeny from all\n");
+    }
+}
+
+/**
+ * Charge le pool d'URLs d'un snapshot. Retourne [] si absent/invalide.
+ */
+function load_preview_pool(string $slug): array {
+    if (!is_valid_gallery_slug($slug)) return [];
+    $f = preview_file($slug);
+    if (!file_exists($f)) return [];
+    $d = json_decode(file_get_contents($f), true);
+    if (!is_array($d) || empty($d['pool']) || !is_array($d['pool'])) return [];
+    return array_values(array_filter($d['pool'], 'is_string'));
+}
+
+/**
+ * Indique si le snapshot d'une galerie est périmé (absent ou trop vieux).
+ */
+function preview_is_stale(string $slug): bool {
+    $f = preview_file($slug);
+    if (!file_exists($f)) return true;
+    return (time() - filemtime($f)) > PREVIEWS_TTL;
+}
+
+/**
+ * Écrit un snapshot pour une galerie.
+ */
+function save_preview_pool(string $slug, array $pool): bool {
+    if (!is_valid_gallery_slug($slug)) return false;
+    ensure_previews_dir();
+    $payload = json_encode([
+        'generated_at' => time(),
+        'pool'         => array_values($pool),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return file_put_contents(preview_file($slug), $payload, LOCK_EX) !== false;
+}
+
+/**
+ * Supprime le snapshot d'une galerie (nettoyage à la suppression).
+ */
+function delete_preview_pool(string $slug): void {
+    $f = preview_file($slug);
+    if (file_exists($f)) @unlink($f);
+}
+
+/**
+ * Convertit une URL de vignette Pixiv (i.pximg.net) vers la source
+ * publique i.pixiv.cat. Le fallback vers i.pixiv.re reste géré côté JS.
+ */
+function preview_thumb_url(string $raw): string {
+    if ($raw === '') return '';
+    return str_replace('https://i.pximg.net', 'https://i.pixiv.cat', $raw);
+}
+
+/**
+ * Appelle l'API de recherche Pixiv pour un tag et retourne les URLs de
+ * vignettes filtrées (IA exclue), déjà converties vers i.pixiv.cat.
+ *
+ * Fonction bas niveau partagée par la génération des snapshots.
+ */
+function preview_fetch_tag_thumbs(string $tag, int $limit = 4): array {
+    $params = http_build_query([
+        'word'    => $tag,
+        'order'   => 'popular_d',
+        'mode'    => 'safe',
+        'p'       => 1,
+        's_mode'  => 's_tag',
+        'ai_type' => PIXIV_AI_TYPE,
+        'lang'    => 'en',
+    ], '', '&', PHP_QUERY_RFC3986);
+
+    $url = 'https://www.pixiv.net/ajax/search/artworks/' . rawurlencode($tag) . '?' . $params;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_HTTPHEADER     => [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept: application/json',
+            'Accept-Language: en-US,en;q=0.9',
+            'Referer: https://www.pixiv.net/',
+            'Cookie: PHPSESSID=' . PIXIV_PHPSESSID,
+        ],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($err || $http !== 200) return [];
+
+    $data = json_decode($resp, true);
+    if (!$data || ($data['error'] ?? false)) return [];
+
+    $raw     = $data['body']['illustManga']['data'] ?? [];
+    $blocked = get_blocked_tags();
+
+    $thumbs = [];
+    foreach ($raw as $w) {
+        if (($w['aiType'] ?? 0) >= 2) continue;
+        // Filtre IA par tag
+        $isAi = false;
+        foreach (($w['tags'] ?? []) as $t) {
+            $name = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
+            if (in_array($name, $blocked, true)) { $isAi = true; break; }
+        }
+        if ($isAi) continue;
+
+        $u = preview_thumb_url($w['url'] ?? '');
+        if ($u !== '') $thumbs[] = $u;
+        if (count($thumbs) >= $limit) break;
+    }
+    return $thumbs;
+}
+
+/**
+ * Construit le pool d'URLs de vignettes pour une galerie par tags à partir
+ * de sa liste de tags. Échantillonne au hasard, fusionne en round-robin,
+ * déduplique, et plafonne à PREVIEWS_POOL_SIZE.
+ *
+ * @param array $tags Liste de tags Pixiv.
+ * @return array Pool d'URLs (peut être vide si Pixiv est indisponible).
+ */
+function build_preview_pool_from_tags(array $tags): array {
+    $tags = array_values(array_filter(array_map('strval', $tags), fn($t) => $t !== ''));
+    if (empty($tags)) return [];
+
+    // Échantillonner au plus PREVIEWS_MAX_TAGS tags au hasard.
+    shuffle($tags);
+    $chosen = array_slice($tags, 0, PREVIEWS_MAX_TAGS);
+
+    // Combien d'images demander par tag pour viser POOL_SIZE.
+    $per_tag = max(2, (int) ceil(PREVIEWS_POOL_SIZE / max(1, count($chosen))));
+
+    $per_tag_results = [];
+    foreach ($chosen as $tag) {
+        $thumbs = preview_fetch_tag_thumbs($tag, $per_tag + 2);
+        shuffle($thumbs);
+        $per_tag_results[] = array_slice($thumbs, 0, $per_tag);
+    }
+
+    // Round-robin inter-tags pour varier les sources dans le pool.
+    $pool = [];
+    $seen = [];
+    $maxLen = 0;
+    foreach ($per_tag_results as $r) $maxLen = max($maxLen, count($r));
+    for ($i = 0; $i < $maxLen; $i++) {
+        foreach ($per_tag_results as $urls) {
+            if ($i < count($urls) && !isset($seen[$urls[$i]])) {
+                $seen[$urls[$i]] = true;
+                $pool[] = $urls[$i];
+                if (count($pool) >= PREVIEWS_POOL_SIZE) break 2;
+            }
+        }
+    }
+    return $pool;
+}
+
+/**
+ * (Re)génère le snapshot d'une galerie publique.
+ * Retourne le nombre d'URLs dans le pool généré (0 = échec/vide).
+ * Un pool vide n'écrase PAS un snapshot existant valide (évite de casser
+ * l'affichage si Pixiv est temporairement indisponible).
+ */
+function regenerate_gallery_preview(string $slug): int {
+    $g = load_gallery($slug);
+    if (!$g) return 0;
+    $tags = array_column($g['characters'] ?? [], 'tag');
+    $pool = build_preview_pool_from_tags($tags);
+    if (empty($pool)) {
+        // Ne rien écraser : on garde l'ancien snapshot s'il existe.
+        return 0;
+    }
+    save_preview_pool($slug, $pool);
+    return count($pool);
+}
+
+// ── Snapshots des galeries privées ───────────────────────────
+//
+//  Réservées à l'admin. Deux cas :
+//    - type 'tag'      → comme les publiques, à partir des tags
+//    - type spécial    → illust / bookmark / following, via les
+//                        endpoints Pixiv du compte connecté
+
+/**
+ * Récupère l'userId Pixiv depuis le PHPSESSID (format "userId_...").
+ */
+function pixiv_user_id(): ?string {
+    if (preg_match('/^(\d+)_/', PIXIV_PHPSESSID, $m)) return $m[1];
+    return null;
+}
+
+/**
+ * Appel cURL générique vers un endpoint Pixiv authentifié.
+ * Retourne le tableau décodé ou null.
+ */
+function pixiv_authenticated_get(string $url): ?array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_HTTPHEADER     => [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept: application/json',
+            'Accept-Language: en-US,en;q=0.9',
+            'Referer: https://www.pixiv.net/',
+            'Cookie: PHPSESSID=' . PIXIV_PHPSESSID,
+        ],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($err || $http !== 200) return null;
+    $d = json_decode($resp, true);
+    if (!$d || ($d['error'] ?? false)) return null;
+    return $d;
+}
+
+/**
+ * Extrait, filtre (IA) et convertit les vignettes d'une liste brute
+ * d'œuvres Pixiv. Retourne un tableau d'URLs i.pixiv.cat.
+ */
+function preview_extract_thumbs(array $works, int $limit): array {
+    $blocked = get_blocked_tags();
+    $out = [];
+    foreach ($works as $w) {
+        if (!is_array($w)) continue;
+        if (($w['aiType'] ?? 0) >= 2) continue;
+        $isAi = false;
+        foreach (($w['tags'] ?? []) as $t) {
+            $name = is_array($t) ? ($t['tag'] ?? '') : (string)$t;
+            if (in_array($name, $blocked, true)) { $isAi = true; break; }
+        }
+        if ($isAi) continue;
+        $u = preview_thumb_url($w['url'] ?? '');
+        if ($u !== '') $out[] = $u;
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+/**
+ * Construit le pool d'aperçus d'une galerie spéciale (illust/bookmark/following).
+ */
+function build_preview_pool_special(string $special_type): array {
+    $userId = pixiv_user_id();
+    if (!$userId) return [];
+
+    $works = [];
+
+    switch ($special_type) {
+        case 'illust':
+            $all = pixiv_authenticated_get(
+                'https://www.pixiv.net/ajax/user/' . $userId . '/profile/all?' . http_build_query(['lang' => 'en'])
+            );
+            $ids = array_keys($all['body']['illusts'] ?? []);
+            rsort($ids, SORT_NUMERIC);
+            $ids = array_slice($ids, 0, PREVIEWS_POOL_SIZE + 4);
+            if (!empty($ids)) {
+                $qs = 'work_category=illust&is_first_page=0&lang=en';
+                foreach ($ids as $id) $qs .= '&ids[]=' . rawurlencode((string)$id);
+                $det = pixiv_authenticated_get(
+                    'https://www.pixiv.net/ajax/user/' . $userId . '/profile/illusts?' . $qs
+                );
+                $works = array_values($det['body']['works'] ?? []);
+            }
+            break;
+
+        case 'bookmark':
+            $bm = pixiv_authenticated_get(
+                'https://www.pixiv.net/ajax/user/' . $userId . '/illusts/bookmarks?' . http_build_query([
+                    'tag' => '', 'offset' => 0, 'limit' => PREVIEWS_POOL_SIZE + 4,
+                    'rest' => 'show', 'lang' => 'en',
+                ], '', '&', PHP_QUERY_RFC3986)
+            );
+            $works = $bm['body']['works'] ?? [];
+            break;
+
+        case 'following':
+            $fl = pixiv_authenticated_get(
+                'https://www.pixiv.net/ajax/follow_latest/illust?' . http_build_query([
+                    'p' => 1, 'mode' => 'all', 'lang' => 'en',
+                ])
+            );
+            $thumbMap = [];
+            foreach (($fl['body']['thumbnails']['illust'] ?? []) as $w) {
+                if (isset($w['id'])) $thumbMap[(string)$w['id']] = $w;
+            }
+            foreach (($fl['body']['page']['ids'] ?? []) as $id) {
+                if (isset($thumbMap[(string)$id])) $works[] = $thumbMap[(string)$id];
+            }
+            break;
+
+        default:
+            return [];
+    }
+
+    $thumbs = preview_extract_thumbs($works, PREVIEWS_POOL_SIZE + 4);
+    shuffle($thumbs);
+    return array_slice($thumbs, 0, PREVIEWS_POOL_SIZE);
+}
+
+/**
+ * (Re)génère le snapshot d'une galerie privée (tags ou spéciale).
+ * Retourne le nombre d'URLs générées (0 = échec/vide, ancien conservé).
+ */
+function regenerate_private_preview(string $slug, string $private_dir): int {
+    if (!is_valid_gallery_slug($slug)) return 0;
+    $f = $private_dir . '/' . $slug . '.json';
+    if (!file_exists($f)) return 0;
+    $d = json_decode(file_get_contents($f), true);
+    if (!is_array($d)) return 0;
+
+    $gtype = $d['type'] ?? 'tag';
+
+    if ($gtype === 'tag') {
+        $tags = array_column($d['characters'] ?? [], 'tag');
+        $pool = build_preview_pool_from_tags($tags);
+    } else {
+        // Galerie spéciale : le type ('illust'/'bookmark'/'following')
+        // est directement le champ 'type' du JSON.
+        $pool = build_preview_pool_special($gtype);
+    }
+
+    if (empty($pool)) return 0;
+    save_preview_pool($slug, $pool);
+    return count($pool);
 }

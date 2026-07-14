@@ -46,6 +46,8 @@ function delete_private_gallery(string $slug): bool {
     $ok   = true;
     if (file_exists($json)) $ok = unlink($json) && $ok;
     if (file_exists($php))  $ok = unlink($php)  && $ok;
+    // Nettoyer le snapshot d'aperçu associé, s'il existe.
+    if (function_exists('delete_preview_pool')) delete_preview_pool($slug);
     return $ok;
 }
 

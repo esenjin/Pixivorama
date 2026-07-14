@@ -65,6 +65,23 @@ if (!empty($SETTINGS['private_gallery_order']) && is_array($SETTINGS['private_ga
 
 $tag_galleries     = array_values(array_filter($all_galleries, fn($g) => ($g['type'] ?? 'tag') === 'tag'));
 $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['type'] ?? 'tag') !== 'tag'));
+
+// ── Aperçus : lecture des snapshots pré-résolus ──────────────
+//  Comme sur la page d'accueil publique, les vignettes sont lues depuis
+//  cache/previews/{slug}.json. Les snapshots périmés (> 24 h) — qu'ils
+//  soient par tags ou spéciaux — sont régénérés en arrière-plan en fin
+//  de page (on est en session admin, donc les endpoints privés sont
+//  accessibles).
+
+$preview_pools = [];
+$stale_slugs   = [];
+foreach ($all_galleries as $g) {
+    $slug = $g['slug'];
+    $preview_pools[$slug] = load_preview_pool($slug);
+    if (preview_is_stale($slug)) {
+        $stale_slugs[] = $slug;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -113,9 +130,10 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
         <a class="gallery-card private-gallery-card private-gallery-card--special"
            href="private/<?= htmlspecialchars($g['slug']) ?>.php"
            data-slug="<?= htmlspecialchars($g['slug']) ?>"
-           data-type="<?= htmlspecialchars($stype) ?>">
+           data-type="<?= htmlspecialchars($stype) ?>"
+           data-pool="<?= htmlspecialchars(json_encode($preview_pools[$g['slug']] ?? [], JSON_UNESCAPED_SLASHES)) ?>">
 
-            <!-- Fond animé (rempli par JS pour illust/bookmark/following) -->
+            <!-- Fond animé à partir du pool pré-résolu -->
             <div class="gc-mosaic" id="mosaic-<?= htmlspecialchars($g['slug']) ?>">
                 <?php for ($i = 0; $i < 6; $i++): ?>
                 <div class="gc-mosaic-placeholder"></div>
@@ -152,9 +170,9 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
         <a class="gallery-card private-gallery-card"
            href="private/<?= htmlspecialchars($g['slug']) ?>.php"
            data-slug="<?= htmlspecialchars($g['slug']) ?>"
-           data-tags="<?= htmlspecialchars(json_encode(array_column($g['characters'] ?? [], 'tag'))) ?>">
+           data-pool="<?= htmlspecialchars(json_encode($preview_pools[$g['slug']] ?? [], JSON_UNESCAPED_SLASHES)) ?>">
 
-            <!-- Mosaïque (remplie par JS) -->
+            <!-- Mosaïque animée à partir du pool pré-résolu -->
             <div class="gc-mosaic" id="mosaic-<?= htmlspecialchars($g['slug']) ?>">
                 <?php for ($i = 0; $i < 6; $i++): ?>
                 <div class="gc-mosaic-placeholder"></div>
@@ -213,69 +231,38 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 </footer>
 
 <script>
-/* ── Aperçus des galeries par tags ── */
-(async function loadTagPreviews() {
-    const INTERVAL    = 4000;
-    const MAX_TAGS    = 6;
-    const IMGS_PER_TAG = 2;
+/* ── Aperçus des galeries privées : carousel à partir du pool pré-résolu ──
+   Tags ET spéciales sont traitées de la même façon : chaque carte porte
+   son pool dans data-pool (résolu côté serveur, source i.pixiv.cat).
+   Aucun appel Pixiv ici. Démarrage paresseux via IntersectionObserver. */
+(function () {
+    const INTERVAL = 4000;
 
-    const cards = document.querySelectorAll('.private-gallery-card[data-tags]');
-
-    for (const card of cards) {
+    function startCard(card) {
         const slug = card.dataset.slug;
-        let tags;
-        try { tags = JSON.parse(card.dataset.tags); } catch { continue; }
-        if (!tags.length) continue;
+        let pool;
+        try { pool = JSON.parse(card.dataset.pool || '[]'); } catch { pool = []; }
 
-        const chosen = [...tags].sort(() => Math.random() - .5).slice(0, MAX_TAGS);
-
-        const results = await Promise.all(chosen.map(async tag => {
-            try {
-                const res  = await fetch(`fonctions/pixiv-proxy.php?tag=${encodeURIComponent(tag)}&page=1&per_page=28&order=popular_d&mode=safe&gallery=${encodeURIComponent(slug)}&private=1`);
-                const data = await res.json();
-                if (!data.works?.length) return [];
-                return data.works
-                    .sort(() => Math.random() - .5)
-                    .slice(0, IMGS_PER_TAG)
-                    .map(w => (w.thumb || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'));
-            } catch { return []; }
-        }));
-
-        const pool = [];
-        const seen = new Set();
-        const maxLen = Math.max(...results.map(r => r.length));
-        for (let i = 0; i < maxLen; i++) {
-            for (const urls of results) {
-                if (i < urls.length && !seen.has(urls[i])) {
-                    seen.add(urls[i]);
-                    pool.push(urls[i]);
-                }
-            }
-        }
+        const mosaic = document.getElementById('mosaic-' + slug);
+        if (!mosaic) return;
 
         if (pool.length < 6) {
-            const mosaic = document.getElementById('mosaic-' + slug);
-            if (mosaic) {
-                mosaic.innerHTML = '';
-                mosaic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
-                mosaic.innerHTML = `<span style="
-                    font-family:'Josefin Sans',sans-serif;
-                    font-size:.6rem;
-                    letter-spacing:.18em;
-                    text-transform:uppercase;
-                    color:rgba(122,120,112,.5);
-                    text-align:center;
-                    padding:1rem;
-                    pointer-events:none;
-                ">Aperçu indisponible</span>`;
-            }
-            continue;
+            mosaic.innerHTML = '';
+            mosaic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+            mosaic.innerHTML = `<span style="
+                font-family:'Josefin Sans',sans-serif;
+                font-size:.6rem;
+                letter-spacing:.18em;
+                text-transform:uppercase;
+                color:rgba(122,120,112,.5);
+                text-align:center;
+                padding:1rem;
+                pointer-events:none;
+            ">Aperçu indisponible</span>`;
+            return;
         }
 
         pool.forEach(url => { const img = new Image(); img.src = url; });
-
-        const mosaic = document.getElementById('mosaic-' + slug);
-        if (!mosaic) continue;
 
         mosaic.innerHTML = '';
         const cells   = [];
@@ -290,16 +277,21 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
             [imgA, imgB].forEach(img => {
                 img.className = 'gc-mosaic-img';
                 img.alt       = '';
+                img.loading   = 'lazy';
+                img.decoding  = 'async';
                 img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.8);transition:opacity .9s ease;';
+                img.onerror = function() {
+                    if (this.src.includes('pixiv.cat')) {
+                        this.onerror = null;
+                        this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re');
+                    }
+                };
             });
             imgA.style.opacity = '1';
             imgB.style.opacity = '0';
 
             const url = pool[i];
             imgA.src  = url;
-            imgA.onerror = function() {
-                if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-            };
             visible.add(url);
 
             wrapper.appendChild(imgA);
@@ -321,9 +313,6 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
 
                 if (cell.front === 'A') {
                     cell.imgB.src = nextUrl;
-                    cell.imgB.onerror = function() {
-                        if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-                    };
                     cell.imgB.onload = () => {
                         cell.imgA.style.opacity = '0';
                         cell.imgB.style.opacity = '1';
@@ -331,9 +320,6 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
                     };
                 } else {
                     cell.imgA.src = nextUrl;
-                    cell.imgA.onerror = function() {
-                        if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-                    };
                     cell.imgA.onload = () => {
                         cell.imgB.style.opacity = '0';
                         cell.imgA.style.opacity = '1';
@@ -343,112 +329,46 @@ $special_galleries = array_values(array_filter($all_galleries, fn($g) => ($g['ty
             }, INTERVAL);
         }, Math.random() * INTERVAL);
     }
-})();
 
-/* ── Aperçus des galeries spéciales (illust, bookmark, following) ── */
-(async function loadSpecialPreviews() {
-    const INTERVAL = 4500;
+    const cards = document.querySelectorAll('.gallery-card[data-slug]');
 
-    const cards = document.querySelectorAll('.private-gallery-card--special[data-slug]');
-
-    for (const card of cards) {
-        const slug  = card.dataset.slug;
-        const stype = card.dataset.type;
-
-        let proxyUrl = '';
-        if (stype === 'illust')    proxyUrl = `fonctions/private-proxy.php?type=illust&page=1`;
-        else if (stype === 'bookmark') proxyUrl = `fonctions/private-proxy.php?type=bookmark&page=1`;
-        else if (stype === 'following') proxyUrl = `fonctions/private-proxy.php?type=following&page=1`;
-        else continue;
-
-        try {
-            const res  = await fetch(proxyUrl);
-            const data = await res.json();
-            if (!data.works?.length) continue;
-
-            const pool = data.works
-                .sort(() => Math.random() - .5)
-                .slice(0, 12)
-                .map(w => (w.thumb || w.image_urls?.square_medium || '').replace('https://i.pximg.net', 'https://i.pixiv.cat'))
-                .filter(Boolean);
-
-            if (pool.length < 6) continue;
-
-            pool.forEach(url => { const img = new Image(); img.src = url; });
-
-            const mosaic = document.getElementById('mosaic-' + slug);
-            if (!mosaic) continue;
-
-            mosaic.innerHTML = '';
-            const cells   = [];
-            const visible = new Set();
-
-            for (let i = 0; i < 6; i++) {
-                const wrapper = document.createElement('div');
-                wrapper.style.cssText = 'position:relative;overflow:hidden;width:100%;height:100%;';
-
-                const imgA = document.createElement('img');
-                const imgB = document.createElement('img');
-                [imgA, imgB].forEach(img => {
-                    img.className = 'gc-mosaic-img';
-                    img.alt       = '';
-                    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.8);transition:opacity .9s ease;';
-                });
-                imgA.style.opacity = '1';
-                imgB.style.opacity = '0';
-
-                const url = pool[i];
-                imgA.src  = url;
-                imgA.onerror = function() {
-                    if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-                };
-                visible.add(url);
-
-                wrapper.appendChild(imgA);
-                wrapper.appendChild(imgB);
-                mosaic.appendChild(wrapper);
-                cells.push({ imgA, imgB, front: 'A', current: url });
-            }
-
-            setTimeout(() => {
-                setInterval(() => {
-                    const cell      = cells[Math.floor(Math.random() * cells.length)];
-                    const available = pool.filter(url => !visible.has(url));
-                    if (!available.length) return;
-
-                    const nextUrl = available[Math.floor(Math.random() * available.length)];
-                    visible.delete(cell.current);
-                    visible.add(nextUrl);
-                    cell.current = nextUrl;
-
-                    if (cell.front === 'A') {
-                        cell.imgB.src = nextUrl;
-                        cell.imgB.onerror = function() {
-                            if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-                        };
-                        cell.imgB.onload = () => {
-                            cell.imgA.style.opacity = '0';
-                            cell.imgB.style.opacity = '1';
-                            cell.front = 'B';
-                        };
-                    } else {
-                        cell.imgA.src = nextUrl;
-                        cell.imgA.onerror = function() {
-                            if (this.src.includes('pixiv.cat')) { this.onerror = null; this.src = this.src.replace('https://i.pixiv.cat', 'https://i.pixiv.re'); }
-                        };
-                        cell.imgA.onload = () => {
-                            cell.imgB.style.opacity = '0';
-                            cell.imgA.style.opacity = '1';
-                            cell.front = 'A';
-                        };
-                    }
-                }, INTERVAL);
-            }, Math.random() * INTERVAL);
-
-        } catch { /* silencieux */ }
+    if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    startCard(entry.target);
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { rootMargin: '200px' });
+        cards.forEach(c => io.observe(c));
+    } else {
+        cards.forEach(startCard);
     }
 })();
 </script>
 
 </body>
 </html>
+
+<?php
+// ── Refresh paresseux des snapshots périmés (tâche de fond) ──
+//  Page déjà envoyée. On ferme la connexion puis on régénère les
+//  snapshots périmés (> 24 h), qu'ils soient par tags ou spéciaux.
+//  On est en session admin : les endpoints privés/spéciaux sont
+//  accessibles.
+
+if (!empty($stale_slugs)) {
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        @ob_end_flush();
+        @flush();
+    }
+    ignore_user_abort(true);
+    @set_time_limit(0);
+
+    foreach ($stale_slugs as $slug) {
+        regenerate_private_preview($slug, PRIVATE_DIR);
+    }
+}

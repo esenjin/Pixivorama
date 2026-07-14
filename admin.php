@@ -936,6 +936,46 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         </div>
     </section>
 
+    <section class="admin-section">
+        <p class="section-title">Régénération des aperçus</p>
+        <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
+            Reconstruit les vignettes affichées sur la page d'accueil et dans l'espace perso.
+            Chaque galerie interroge Pixiv une fois et enregistre un jeu d'images
+            (<code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">cache/previews/</code>),
+            ce qui rend le chargement des aperçus quasi instantané côté visiteur.
+            Ces aperçus se rafraîchissent aussi automatiquement toutes les 24&nbsp;h ;
+            ce bouton force une mise à jour immédiate (utile après avoir créé ou modifié des galeries).
+        </p>
+
+        <!-- Barre de progression -->
+        <div id="prevProgressWrap" style="display:none;margin-bottom:1.2rem;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem;">
+                <span style="font-size:0.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);" id="prevStatusLabel">En cours…</span>
+                <span style="font-size:0.82rem;color:var(--accent);" id="prevPercent">0 %</span>
+            </div>
+            <div style="background:var(--border);border-radius:2px;height:3px;overflow:hidden;">
+                <div id="prevBar" style="height:100%;background:var(--accent);width:0;transition:width .3s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Résultats ligne par ligne -->
+        <div id="prevResults" style="display:none;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.2rem;">
+            <div id="prevResultList" style="padding:.6rem 0;"></div>
+        </div>
+
+        <!-- Résumé final -->
+        <div id="prevSummary" style="display:none;" class="alert alert-success"></div>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <button class="btn-primary" id="btnRegenPreviews" style="margin-top:0;" onclick="startPreviewRegen()">
+                Régénérer les aperçus
+            </button>
+            <button class="btn-add" id="btnPrevReset" style="display:none;width:auto;padding:.65rem 1.4rem;" onclick="resetPreviewRegen()">
+                Réinitialiser
+            </button>
+        </div>
+    </section>
+
     <script>
     // ── Maintenance : régénération des galeries ──
     let regenGalleries = [];
@@ -1082,6 +1122,113 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
         document.getElementById('btnLoadGalleries').style.display  = '';
         document.getElementById('btnLoadGalleries').disabled       = false;
         document.getElementById('btnLoadGalleries').textContent    = 'Analyser les galeries';
+    }
+
+    // ── Maintenance : régénération des aperçus (snapshots) ──
+    let prevRunning = false;
+
+    async function startPreviewRegen() {
+        if (prevRunning) return;
+        prevRunning = true;
+
+        const btn = document.getElementById('btnRegenPreviews');
+        btn.disabled = true;
+        document.getElementById('prevProgressWrap').style.display = '';
+        document.getElementById('prevResults').style.display      = '';
+        document.getElementById('prevSummary').style.display      = 'none';
+        document.getElementById('prevResultList').innerHTML       = '';
+        document.getElementById('btnPrevReset').style.display     = 'none';
+
+        const bar         = document.getElementById('prevBar');
+        const pct         = document.getElementById('prevPercent');
+        const statusLabel = document.getElementById('prevStatusLabel');
+
+        let res;
+        try {
+            res = await fetch('fonctions/previews.php', { method: 'POST', body: new URLSearchParams({ action: 'regen' }) });
+        } catch {
+            statusLabel.textContent = 'Erreur réseau';
+            prevRunning = false;
+            btn.disabled = false;
+            return;
+        }
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buffer  = '';
+
+        function parseEvents(chunk) {
+            buffer += chunk;
+            const events = buffer.split('\n\n');
+            buffer = events.pop();
+            for (const block of events) {
+                let eventName = 'message', dataStr = '';
+                for (const line of block.split('\n')) {
+                    if (line.startsWith('event: ')) eventName = line.slice(7);
+                    if (line.startsWith('data: '))  dataStr   = line.slice(6);
+                }
+                if (!dataStr) continue;
+                try { handleEvent(eventName, JSON.parse(dataStr)); } catch {}
+            }
+        }
+
+        function handleEvent(name, data) {
+            if (name === 'start') {
+                statusLabel.textContent = `Aperçus de ${data.total} galerie${data.total > 1 ? 's' : ''}…`;
+            } else if (name === 'progress') {
+                bar.style.width         = data.percent + '%';
+                pct.textContent         = data.percent + ' %';
+                statusLabel.textContent = `${data.index} / ${data.total} — ${data.title}`;
+                addRow(data);
+            } else if (name === 'done') {
+                bar.style.width         = '100%';
+                pct.textContent         = '100 %';
+                statusLabel.textContent = 'Terminé';
+                const summary = document.getElementById('prevSummary');
+                summary.style.display = '';
+                summary.className = data.errors > 0 ? 'alert alert-error' : 'alert alert-success';
+                summary.textContent = `${data.success} aperçu${data.success > 1 ? 's' : ''} régénéré${data.success > 1 ? 's' : ''}`
+                    + (data.errors > 0 ? `, ${data.errors} sans image` : '') + '.';
+                prevRunning = false;
+                btn.disabled = false;
+                document.getElementById('btnPrevReset').style.display = '';
+            }
+        }
+
+        function addRow(data) {
+            const list = document.getElementById('prevResultList');
+            const ok   = data.status === 'ok';
+            const scopeLabel = data.scope === 'private' ? 'privée' : 'publique';
+            const row  = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.35rem .8rem;border-bottom:1px solid var(--border);';
+            row.innerHTML = `
+                <span style="font-size:0.8rem;flex-shrink:0;color:${ok ? '#5db87a' : '#c0a06a'};">${ok ? '✓' : '○'}</span>
+                <span style="flex:1;font-size:0.88rem;color:var(--text);">${escH(data.title)}
+                    <code style="font-size:0.78rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .3rem;border-radius:2px;margin-left:.3rem;">${escH(data.slug)}</code>
+                    <span style="font-size:0.72rem;color:var(--text-muted);margin-left:.3rem;">${scopeLabel}</span>
+                </span>
+                <span style="font-size:0.82rem;color:${ok ? '#5db87a' : 'var(--text-muted)'};white-space:nowrap;">${escH(data.message)}</span>
+            `;
+            list.appendChild(row);
+            list.parentElement.scrollTop = list.parentElement.scrollHeight;
+        }
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            parseEvents(decoder.decode(value, { stream: true }));
+        }
+    }
+
+    function resetPreviewRegen() {
+        prevRunning = false;
+        document.getElementById('prevProgressWrap').style.display = 'none';
+        document.getElementById('prevResults').style.display      = 'none';
+        document.getElementById('prevSummary').style.display      = 'none';
+        document.getElementById('prevResultList').innerHTML       = '';
+        document.getElementById('prevBar').style.width            = '0';
+        document.getElementById('btnPrevReset').style.display      = 'none';
+        document.getElementById('btnRegenPreviews').disabled      = false;
     }
 
     function escH(str) {
