@@ -10,6 +10,13 @@
     Deny from all
 </FilesMatch>
 
+# Protège la config Vestikan (contient le client_secret) et le SDK,
+# qui ne doivent jamais être servis / exécutés en accès direct.
+<FilesMatch "^(vestikan-config\.php|vestikan-sdk\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
 # Protège tous les fichiers JSON (racine, galleries/ et private/)
 # FilesMatch ne couvre que le dossier courant, donc on ajoute une RewriteRule
 # pour bloquer les .json dans tous les sous-dossiers.

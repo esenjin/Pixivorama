@@ -12,6 +12,11 @@ if (!isset($_SESSION['admin_ok']) && remember_check()) {
 $error   = '';
 $success = '';
 
+// ── Message d'échec renvoyé par le flux Vestikan (callback) ──
+if (isset($_GET['vk_error'])) {
+    $error = 'La connexion via Vestikan a échoué ou a été refusée.';
+}
+
 // ── Déconnexion ──
 if (isset($_GET['logout'])) {
     remember_clear();
@@ -365,6 +370,10 @@ function loginPage(string $error): void { ?>
                 <button type="submit" class="btn-primary">Accéder</button>
             </div>
         </form>
+        <?php if (is_file(__DIR__ . '/vestikan-config.php')): ?>
+            <div class="vk-sep"><span>ou</span></div>
+            <a href="vestikan-login.php" class="btn-vestikan">Se connecter avec Vestikan</a>
+        <?php endif; ?>
         <p style="text-align:center;font-size:0.82rem;color:var(--text-muted);letter-spacing:.1em;">
             <a href="index.php" style="color:var(--text-muted);text-decoration:none;">← Retour à l'accueil</a>
         </p>

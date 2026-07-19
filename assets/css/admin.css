@@ -1106,3 +1106,44 @@
     text-transform: uppercase;
 }
 
+
+/* ============================================================
+   Vestikan — bouton de connexion sur la page de login
+   ============================================================ */
+.vk-sep {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin: -.2rem 0;
+    color: var(--text-muted);
+    font-size: .78rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.vk-sep::before,
+.vk-sep::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+.btn-vestikan {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: .88rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .85rem;
+    border-radius: var(--radius);
+    transition: border-color .2s, background .2s, color .2s;
+}
+.btn-vestikan:hover {
+    border-color: var(--accent);
+    background: rgba(200,169,126,.08);
+    color: var(--accent);
+}
