@@ -5,7 +5,26 @@
 // ============================================================
 require_once __DIR__ . '/../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    // Aligner les paramètres du cookie de session sur ceux de l'admin
+    // (path=/) : sans cela, cette page étant dans un sous-dossier,
+    // PHP émet le cookie avec un path restreint et $_SESSION['admin_ok']
+    // n'est pas lu → le suivi des nouveautés reste inactif.
+    $session_lifetime = 7 * 24 * 3600;
+    ini_set('session.gc_maxlifetime', $session_lifetime);
+    session_set_cookie_params([
+        'lifetime' => $session_lifetime,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+// Restaurer la session admin via le cookie remember-me si nécessaire
+if (!isset($_SESSION['admin_ok']) && function_exists('remember_check') && remember_check()) {
+    $_SESSION['admin_ok'] = true;
+}
 $_recherche_is_admin  = !empty($_SESSION['admin_ok']);
 $_recherche_seen_scope = $SETTINGS['seen_scope'] ?? 'following';
 if (!in_array($_recherche_seen_scope, ['following', 'all', 'none'], true)) {
