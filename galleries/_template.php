@@ -42,7 +42,7 @@ $gallery_title = $gallery['title'];
 $characters    = $gallery['characters'];
 
 // ── Paramètres transmis au template commun ──────────────────
-$page_title  = htmlspecialchars($gallery_title) . ' — Pixivorama';
+$page_title   = $gallery_title . ' — Pixivorama';
 $back_href   = '../index.php';
 $back_label  = 'Galerie';
 $is_private  = false;

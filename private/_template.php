@@ -35,7 +35,7 @@ $gallery_title = $gallery['title'];
 $characters    = $gallery['characters'];
 
 // ── Paramètres transmis au template commun ──────────────────
-$page_title   = htmlspecialchars($gallery_title) . ' — Privé — Pixivorama';
+$page_title   = $gallery_title . ' — Privé — Pixivorama';
 $back_href    = '../perso.php';
 $back_label   = 'Espace perso';
 $is_private   = true;

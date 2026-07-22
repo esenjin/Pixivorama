@@ -45,7 +45,7 @@ $seen_endpoint = substr($seen_endpoint, 0, strrpos($seen_endpoint, '/') + 1) . '
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?></title>
+    <title><?= htmlspecialchars($page_title, ENT_NOQUOTES) ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Josefin+Sans:wght@200;300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= htmlspecialchars($assets_path ?? '../assets/') ?>styles.css">
