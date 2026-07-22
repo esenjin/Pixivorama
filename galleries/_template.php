@@ -5,7 +5,27 @@
 // ============================================================
 require_once __DIR__ . '/../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    // Cookie de session aligné sur celui de l'admin (path=/) : cette page
+    // vit dans le sous-dossier galleries/, donc sans forcer le path PHP
+    // émet un cookie restreint au sous-dossier et $_SESSION['admin_ok']
+    // n'est pas lu → le suivi des nouveautés reste inactif au premier
+    // chargement.
+    $session_lifetime = 7 * 24 * 3600;
+    ini_set('session.gc_maxlifetime', $session_lifetime);
+    session_set_cookie_params([
+        'lifetime' => $session_lifetime,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+// Restaurer la session admin via le cookie remember-me si nécessaire
+if (!isset($_SESSION['admin_ok']) && function_exists('remember_check') && remember_check()) {
+    $_SESSION['admin_ok'] = true;
+}
 
 $slug    = basename(__FILE__, '.php');
 $gallery = load_gallery($slug);
