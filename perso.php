@@ -154,6 +154,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Réorganiser les galeries privées ---
+    elseif ($action === 'reorder_private_galleries') {
+        $order = json_decode($_POST['gallery_order'] ?? '[]', true);
+        if (is_array($order)) {
+            $validSlugs = array_filter($order, 'is_valid_gallery_slug');
+            $SETTINGS['private_gallery_order'] = array_values($validSlugs);
+            save_settings($SETTINGS);
+            $success = 'Ordre des galeries privées mis à jour.';
+        } else {
+            $error = 'Données de réorganisation invalides.';
+        }
+    }
+
     // --- Supprimer une galerie privée ---
     elseif ($action === 'delete_private_gallery') {
         $slug = trim($_POST['gallery_slug'] ?? '');
@@ -268,7 +281,7 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
         <?php else: ?>
 
         <!-- Liste des galeries spéciales existantes -->
-        <div class="gallery-list" style="margin-bottom:1.5rem;">
+        <div class="gallery-list" id="privateGalleryListSpecial" data-order-group="private" style="margin-bottom:1.5rem;">
             <?php foreach ($special_galleries as $g):
                 $stype = $g['type'];
                 $info  = SPECIAL_TYPES[$stype] ?? ['label' => $stype, 'icon' => '·'];
@@ -276,6 +289,7 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
             <div class="gallery-item" id="pgi-<?= htmlspecialchars($g['slug']) ?>" data-slug="<?= htmlspecialchars($g['slug']) ?>">
                 <div class="gallery-item-header" onclick="toggleGallery('pgi-<?= htmlspecialchars($g['slug']) ?>')">
                     <div style="display:flex;align-items:center;gap:.7rem;flex:1;min-width:0;">
+                        <span class="gallery-drag-handle" draggable="true" title="Glisser pour réordonner" onclick="event.stopPropagation()">⠿</span>
                         <span class="special-badge"><?= $info['icon'] ?></span>
                         <div class="gallery-item-info">
                             <span class="gallery-item-title"><?= htmlspecialchars($g['title']) ?></span>
@@ -338,10 +352,11 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
         </p>
 
         <?php if (!empty($tag_galleries)): ?>
-        <div class="gallery-list" style="margin-bottom:1.5rem;">
+        <div class="gallery-list" id="privateGalleryListTag" data-order-group="private" style="margin-bottom:1.5rem;">
             <?php foreach ($tag_galleries as $g): ?>
             <div class="gallery-item" id="pgi-<?= htmlspecialchars($g['slug']) ?>" data-slug="<?= htmlspecialchars($g['slug']) ?>">
                 <div class="gallery-item-header" onclick="toggleGallery('pgi-<?= htmlspecialchars($g['slug']) ?>')">
+                    <span class="gallery-drag-handle" draggable="true" title="Glisser pour réordonner" onclick="event.stopPropagation()">⠿</span>
                     <div class="gallery-item-info">
                         <span class="gallery-item-title"><?= htmlspecialchars($g['title']) ?></span>
                         <span class="gallery-item-meta">
@@ -475,6 +490,12 @@ $special_galleries = array_values(array_filter($private_galleries, fn($g) => ($g
     <form method="POST" id="deleteForm" style="display:none">
         <input type="hidden" name="action" value="delete_private_gallery">
         <input type="hidden" name="gallery_slug" id="deleteSlug">
+    </form>
+
+    <!-- Formulaire de réorganisation (invisible, soumis par JS) -->
+    <form method="POST" id="reorderPrivateForm" style="display:none">
+        <input type="hidden" name="action" value="reorder_private_galleries">
+        <input type="hidden" name="gallery_order" id="privateGalleryOrder">
     </form>
 
 </div><!-- /.admin-wrap -->
@@ -651,6 +672,76 @@ document.addEventListener('drop', e => {
     t.classList.remove('drag-over');
 });
 document.querySelectorAll('.char-row .drag-handle').forEach(initDragHandle);
+
+// ── Drag & Drop galeries privées (réorganisation) ──
+let dragSrcPrivateGallery = null;
+
+function initPrivateGalleryDragHandle(handle) {
+    const item = handle.closest('.gallery-item');
+
+    handle.addEventListener('dragstart', e => {
+        dragSrcPrivateGallery = item;
+        item.classList.add('drag-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        e.stopPropagation();
+    });
+
+    handle.addEventListener('dragend', () => {
+        document.querySelectorAll('#privateGalleryListSpecial .gallery-item, #privateGalleryListTag .gallery-item')
+            .forEach(i => i.classList.remove('drag-dragging', 'drag-over'));
+        savePrivateGalleryOrder();
+        dragSrcPrivateGallery = null;
+    });
+}
+
+document.addEventListener('dragover', e => {
+    const target = e.target.closest('.gallery-item');
+    if (!target || !dragSrcPrivateGallery || target === dragSrcPrivateGallery) return;
+    const srcList = dragSrcPrivateGallery.closest('[data-order-group="private"]');
+    const tgtList = target.closest('[data-order-group="private"]');
+    if (!srcList || srcList !== tgtList) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    srcList.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+}, true);
+
+document.addEventListener('dragleave', e => {
+    const target = e.target.closest('.gallery-item');
+    if (target && target.closest('[data-order-group="private"]')) target.classList.remove('drag-over');
+}, true);
+
+document.addEventListener('drop', e => {
+    const target = e.target.closest('.gallery-item');
+    if (!target || !dragSrcPrivateGallery || target === dragSrcPrivateGallery) return;
+    const srcList = dragSrcPrivateGallery.closest('[data-order-group="private"]');
+    const tgtList = target.closest('[data-order-group="private"]');
+    if (!srcList || srcList !== tgtList) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const items  = [...srcList.querySelectorAll(':scope > .gallery-item')];
+    const srcIdx = items.indexOf(dragSrcPrivateGallery);
+    const tgtIdx = items.indexOf(target);
+    srcList.insertBefore(dragSrcPrivateGallery, srcIdx < tgtIdx ? target.nextSibling : target);
+    target.classList.remove('drag-over');
+}, true);
+
+function savePrivateGalleryOrder() {
+    const lists = document.querySelectorAll('[data-order-group="private"]');
+    const slugs = [];
+    lists.forEach(list => {
+        list.querySelectorAll(':scope > .gallery-item[data-slug]').forEach(i => slugs.push(i.dataset.slug));
+    });
+    const orderInput = document.getElementById('privateGalleryOrder');
+    const form        = document.getElementById('reorderPrivateForm');
+    if (!orderInput || !form) return;
+    orderInput.value = JSON.stringify(slugs);
+    form.submit();
+}
+
+document.querySelectorAll('#privateGalleryListSpecial .gallery-drag-handle, #privateGalleryListTag .gallery-drag-handle')
+    .forEach(initPrivateGalleryDragHandle);
 
 // ── Confirmation suppression ──
 async function confirmDelete(slug, title) {
