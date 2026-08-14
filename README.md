@@ -32,9 +32,15 @@ Chaque illustration redirige vers sa page Pixiv originale, générant du trafic 
 index.php                   Page d'accueil — mosaïque dynamique de toutes les galeries
 admin.php                   Interface d'administration
 perso.php                   Espace personnel (galeries privées, admin uniquement)
+private-home.php            Vitrine des galeries privées (tags + spéciales), admin uniquement
 config.php                  Constantes, chargement des settings, inclut auth.php et includes/
 auth.php                    Gestion remember-me multi-appareils (inclus par config.php)
 settings.json               Réglages dynamiques — ignoré par git, protégé par .htaccess
+
+vestikan-login.php          Démarre le flux de connexion Vestikan (optionnel)
+vestikan-callback.php       Retour du flux Vestikan, ouvre la session admin
+vestikan-sdk.php            Client OAuth-like minimal pour Vestikan
+vestikan-config.php         Identifiants Vestikan — non versionné, protégé par .htaccess (absent = intégration désactivée)
 
 includes/
   galleries.php             CRUD galeries publiques + privées, helpers, schema_version
@@ -101,7 +107,11 @@ Accès direct aux données Pixiv du compte connecté via le cookie de session :
 | Mes bookmarks | Illustrations mises en favori |
 | Artistes suivis | Dernières publications des abonnements |
 
-La galerie Artistes suivis dispose d'un système de suivi des nouveautés : les illustrations non encore vues sont marquées d'un badge *Nouveau*, avec un bouton pour les marquer toutes comme vues. L'état est persisté en base SQLite (`data/seen.db`) côté serveur, ce qui synchronise l'état entre tous les appareils et navigateurs. La durée de mémorisation est configurable dans les Options (90 jours par défaut).
+La galerie Artistes suivis dispose d'un système de suivi des nouveautés : les illustrations non encore vues sont marquées d'un badge *Nouveau*, avec un bouton pour les marquer toutes comme vues. L'état est persisté en base SQLite (`data/seen.db`) côté serveur, ce qui synchronise l'état entre tous les appareils et navigateurs. La durée de mémorisation est configurable dans les Options (90 jours par défaut, entre 1 et 3650 jours, ou **0 pour une mémorisation infinie** sans purge automatique).
+
+### Réorganisation des galeries privées
+
+Comme pour les galeries publiques, l'ordre d'affichage des galeries privées (spéciales et par tags confondues) peut être modifié par glisser-déposer depuis l'espace perso. L'ordre choisi est mémorisé côté serveur (`private_gallery_order` dans `settings.json`) et s'applique à la fois dans l'espace perso et sur `private-home.php`.
 
 ## Recherche libre
 
@@ -127,9 +137,14 @@ L'interface (`admin.php`) est organisée en quatre onglets :
 - **Options** — personnalisation de la page d'accueil (titre, sous-titre, lien pied de page), changement du mot de passe administrateur, et durée de mémorisation des illustrations vues
 - **Maintenance** — régénération des fichiers PHP de galeries, statistiques et purge de `seen.db`, sauvegarde et import ZIP
 
+### Connexion via Vestikan (optionnel)
+
+En plus du mot de passe classique, l'administration peut déléguer l'authentification à [Vestikan](https://concepts.esenjin.xyz/vestikan), un fournisseur d'identité OAuth-like maison. L'intégration est entièrement optionnelle : tant que `vestikan-config.php` (à créer à partir de `vestikan-config.php.example`) est absent, seul le login par mot de passe est proposé. Une fois configuré, un bouton « Se connecter avec Vestikan » apparaît sur `admin.php`, et `vestikan-login.php` / `vestikan-callback.php` gèrent le flux de redirection via `vestikan-sdk.php`.
+
 ## Sécurité
 
 - `settings.json`, `config.php` et `auth.php` sont protégés par `.htaccess` (accès direct refusé)
+- `vestikan-config.php` et `vestikan-sdk.php` sont protégés par `.htaccess` (accès direct refusé)
 - Le dossier `includes/` est bloqué par une RewriteRule (fichiers utilitaires non destinés au web)
 - Le dossier `data/` est bloqué par une RewriteRule (base de données non accessible publiquement)
 - Tous les fichiers `.json` sont protégés par `.htaccess`
@@ -141,7 +156,7 @@ L'interface (`admin.php`) est organisée en quatre onglets :
 
 ## Sauvegardes
 
-Les sauvegardes ZIP (onglet Maintenance) incluent les galeries publiques et privées ainsi que les illustrations vues (`seen_data.json`). À l'import, la fusion des données vues est optionnelle via une checkbox. La restauration complète remplace intégralement `seen.db`.
+Les sauvegardes ZIP (onglet Maintenance) incluent les galeries publiques et privées ainsi que les illustrations mémorisées comme vues, exportées depuis `data/seen.db` (stockées dans le ZIP sous forme d'un fichier `seen_data.json`). À l'import, la fusion des données vues est optionnelle via une checkbox. La restauration complète remplace intégralement `seen.db`.
 
 ## Notes
 
