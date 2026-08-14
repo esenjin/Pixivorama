@@ -62,12 +62,12 @@ function open_seen_db(): PDO {
 
 /**
  * Retourne le TTL de purge en jours (depuis settings.json).
- * Valeur par défaut : 90 jours.
+ * Valeur par défaut : 90 jours. 0 = mémorisation infinie (jamais purgé).
  */
 function get_seen_ttl(): int {
     global $SETTINGS;
     $ttl = (int)($SETTINGS['seen_ttl_days'] ?? 90);
-    return max(1, $ttl); // minimum 1 jour
+    return max(0, $ttl); // 0 autorisé (infini), jamais négatif
 }
 
 // ── Routage ──────────────────────────────────────────────────
@@ -81,11 +81,13 @@ try {
 
     // ── GET load — retourne tous les IDs vus non expirés ──
     if ($method === 'GET' && $action === 'load') {
-        $ttl     = get_seen_ttl();
-        $cutoff  = time() - $ttl * 86400;
+        $ttl = get_seen_ttl();
 
-        // Purge au passage (silencieuse)
-        $db->prepare('DELETE FROM seen_illusts WHERE seen_at < ?')->execute([$cutoff]);
+        // Purge au passage (silencieuse) — sautée si TTL infini (0)
+        if ($ttl > 0) {
+            $cutoff = time() - $ttl * 86400;
+            $db->prepare('DELETE FROM seen_illusts WHERE seen_at < ?')->execute([$cutoff]);
+        }
 
         $rows = $db->query('SELECT illust_id, seen_at FROM seen_illusts')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -132,7 +134,12 @@ try {
 
     // ── POST purge — supprime les entrées expirées (admin) ──
     if ($method === 'POST' && $action === 'purge') {
-        $ttl    = get_seen_ttl();
+        $ttl = get_seen_ttl();
+        if ($ttl <= 0) {
+            // Mémorisation infinie : rien à purger
+            echo json_encode(['ok' => true, 'deleted' => 0]);
+            exit;
+        }
         $cutoff = time() - $ttl * 86400;
         $stmt   = $db->prepare('DELETE FROM seen_illusts WHERE seen_at < ?');
         $stmt->execute([$cutoff]);

@@ -248,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($period,     ['', 'day', 'week', 'month', '6month', 'year'], true)) $period     = '';
         if (!in_array($per_page,   [28, 56], true))                                        $per_page   = 28;
         if (!in_array($mode,       ['safe', 'r18', 'all'], true))                          $mode       = 'safe';
-        if ($seen_ttl < 1 || $seen_ttl > 3650)                                             $seen_ttl   = 90;
+        if ($seen_ttl < 0 || $seen_ttl > 3650)                                             $seen_ttl   = 90;
         if (!in_array($seen_scope, ['following', 'all', 'none'], true))                    $seen_scope = 'following';
  
         $SETTINGS['gallery_defaults'] = compact('order', 'period', 'per_page', 'mode');
@@ -262,14 +262,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'purge_seen') {
         $tab     = 'options';
         $db_file = __DIR__ . '/data/seen.db';
+        $ttl     = (int)($SETTINGS['seen_ttl_days'] ?? 90);
         if (!file_exists($db_file)) {
             $success = 'Base de données seen.db inexistante — rien à purger.';
+        } elseif ($ttl <= 0) {
+            $success = 'Mémorisation infinie activée — rien à purger.';
         } else {
             try {
                 $db      = new PDO('sqlite:' . $db_file);
                 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                $ttl     = (int)($SETTINGS['seen_ttl_days'] ?? 90);
-                $cutoff  = time() - max(1, $ttl) * 86400;
+                $cutoff  = time() - $ttl * 86400;
                 $stmt    = $db->prepare('DELETE FROM seen_illusts WHERE seen_at < ?');
                 $stmt->execute([$cutoff]);
                 $deleted = $stmt->rowCount();
@@ -874,14 +876,15 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
                 </label>
                 <div style="display:flex;align-items:center;gap:.8rem;margin-top:.4rem;">
                     <input type="number" id="seen_ttl_days" name="seen_ttl_days"
-                           min="1" max="3650"
+                           min="0" max="3650"
                            value="<?= (int)($settings['seen_ttl_days'] ?? 90) ?>"
                            class="ttl-input">
                     <span class="ttl-unit">jours</span>
                 </div>
                 <span class="hint">
                     Les illustrations vues depuis plus de ce nombre de jours sont à nouveau marquées
-                    comme nouvelles. Entre 1 et 3650 jours (défaut : 90).
+                    comme nouvelles. Entre 0 et 3650 jours (défaut : 90) — indiquez <strong>0</strong>
+                    pour une mémorisation infinie (aucune purge automatique).
                 </span>
             </div>
 
@@ -1401,9 +1404,12 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
             const data = await res.json();
             if (!data.ok) throw new Error(data.error || 'Erreur');
             const count = Object.keys(data.seen || {}).length;
+            const ttlLabel = data.ttl_days > 0
+                ? `${data.ttl_days} jour${data.ttl_days > 1 ? 's' : ''}`
+                : 'infinie (pas de purge)';
             info.innerHTML = `<div class="alert alert-success" style="margin:0;">
                 <strong>${count}</strong> illustration${count > 1 ? 's' : ''} mémorisée${count > 1 ? 's' : ''}
-                &nbsp;·&nbsp; TTL : <strong>${data.ttl_days}</strong> jour${data.ttl_days > 1 ? 's' : ''}
+                &nbsp;·&nbsp; TTL : <strong>${ttlLabel}</strong>
             </div>`;
         } catch (err) {
             info.innerHTML = `<div class="alert alert-error" style="margin:0;">Erreur : ${escH(err.message)}</div>`;
@@ -1451,7 +1457,8 @@ function adminPage(array $settings, array $galleries, string $tab, string $error
     <section class="admin-section" style="margin-top:1.5rem;">
         <p class="section-title">Sauvegardes & Import</p>
         <p style="font-size:0.85rem;color:var(--text-muted);letter-spacing:.06em;margin-bottom:1.4rem;line-height:1.6;">
-            Les sauvegardes incluent toutes les galeries publiques et privées (fichiers JSON uniquement).
+            Les sauvegardes incluent toutes les galeries publiques et privées (fichiers JSON uniquement)
+            ainsi que les illustrations mémorisées comme vues (base <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">seen.db</code>).
             Elles sont stockées dans <code style="font-size:0.82rem;color:var(--accent-dim);background:rgba(200,169,126,.06);padding:.1rem .4rem;border-radius:2px;">saves/</code>
             et non accessibles publiquement.
         </p>
